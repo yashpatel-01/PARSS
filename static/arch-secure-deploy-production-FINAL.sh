@@ -30,7 +30,7 @@
 #   - Arch Linux ISO (fresh install environment)
 #   - UEFI firmware
 #   - Network connectivity (Wi-Fi or Ethernet)
-#   - Minimum 300GB storage (170-190GB root + home)
+#   - Minimum 70GB storage (170-190GB root + home)
 #   - Root privilege execution
 #
 # Installation Phases:
@@ -468,8 +468,8 @@ check_disk_space() {
     
     log_info "Available disk space: ${AVAILABLE_SPACE_GB}GB"
     
-    if [[ $AVAILABLE_SPACE_GB -lt 300 ]]; then
-        log_error "Insufficient disk space. Minimum required: 300GB, Available: ${AVAILABLE_SPACE_GB}GB"
+    if [[ $AVAILABLE_SPACE_GB -lt 70 ]]; then
+        log_error "Insufficient disk space. Minimum required: 70GB, Available: ${AVAILABLE_SPACE_GB}GB"
         return 1
     fi
     
