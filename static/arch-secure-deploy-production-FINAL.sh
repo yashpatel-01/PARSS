@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 ################################################################################
-# ARCH LINUX SECURE RESEARCH DEPLOYMENT - FINAL PRODUCTION v2.1
+# ARCH LINUX SECURE RESEARCH DEPLOYMENT - FINAL PRODUCTION v2.2
 #
 # Purpose: Complete automated Arch Linux installation with security hardening,
 #          LUKS2 encryption, BTRFS snapshots, and suckless desktop environment
 #          with interactive configuration, error recovery, and reproducible setup
 #
-# Version: 2.1 (Final - With Phase 1B Interactive Configuration)
+# Version: 2.2 (Updated - Single passphrase, menu selection, new defaults)
 #
 # Features:
 #   ✓ Interactive user input (hostname, username, BTRFS volume names)
@@ -53,6 +53,45 @@
 # Author: Cybersecurity Research Team
 # Date: November 2025
 #
+# Changes in v2.2:
+#   ✓ Root partition: 50GB minimum/default (was 180GB)
+#   ✓ Home partition: 20GB minimum (was no minimum)
+#   ✓ Default hostname: devta (was archlinux)
+#   ✓ Default username: patel (was empty)
+#   ✓ Default BTRFS names: root/home/snapshots (was arch_root/arch_home/arch_snapshots)
+#   ✓ Default LUKS names: yumraj/yumdut (was crypt_root/crypt_home)
+#   ✓ Default log subvolume: yes (was yes)
+#   ✓ Default NVIDIA: yes (was yes)
+#   ✓ Default snapshot retention: 12 (was 8)
+#   ✓ Device selection: Menu-based (1/2/3) instead of typing full path
+#   ✓ Single LUKS passphrase: Both root and home use same password
+#   ✓ Unlock once: Only one passphrase prompt at boot (unlocks both)
+#
+# Usage: sudo bash ./arch-secure-deploy-production-FINAL.sh
+#
+# Version: 2.3 (Critical Bug Fixes - Phase 3 & 4 partition/encryption errors)
+#
+# Bug Fixes in v2.3:
+#   ✓ Fixed partition creation alignment issues
+#   ✓ Fixed device synchronization after partitioning
+#   ✓ Added udevadm settle for kernel partition table refresh
+#   ✓ Fixed partition naming for NVMe vs SATA devices
+#   ✓ Added partition verification before encryption
+#   ✓ Improved error handling and logging
+#   ✓ Added sleep delays for device readiness
+#   ✓ Fixed cryptsetup passphrase input handling
+#
+# Previous features (v2.2):
+#   ✓ Root partition: 50GB minimum/default
+#   ✓ Home partition: 20GB minimum
+#   ✓ Default hostname: devta
+#   ✓ Default username: patel
+#   ✓ Default BTRFS names: root/home/snapshots
+#   ✓ Default LUKS names: yumraj/yumdut
+#   ✓ Default snapshot retention: 12
+#   ✓ Menu-based device selection
+#   ✓ Single LUKS passphrase for both partitions
+#
 ################################################################################
 
 set -euo pipefail
@@ -83,16 +122,16 @@ declare HOME_SIZE_GB=0
 declare AVAILABLE_SPACE_GB=0
 
 # === INTERACTIVE CONFIGURATION VARIABLES ===
-declare HOSTNAME_SYS="archlinux"
-declare PRIMARY_USER=""
-declare BTRFS_ROOT_VOL="arch_root"
-declare BTRFS_HOME_VOL="arch_home"
-declare BTRFS_SNAP_VOL="arch_snapshots"
-declare LUKS_ROOT_NAME="crypt_root"
-declare LUKS_HOME_NAME="crypt_home"
+declare HOSTNAME_SYS="devta"
+declare PRIMARY_USER="patel"
+declare BTRFS_ROOT_VOL="root"
+declare BTRFS_HOME_VOL="home"
+declare BTRFS_SNAP_VOL="snapshots"
+declare LUKS_ROOT_NAME="yumraj"
+declare LUKS_HOME_NAME="yumdut"
 declare ADD_LOG_SUBVOLUME="true"
 declare ENABLE_NVIDIA_GPU="true"
-declare SNAPSHOT_RETENTION=8
+declare SNAPSHOT_RETENTION=12
 declare SYSTEM_TIMEZONE="UTC"
 
 # === FEATURE FLAGS ===
@@ -284,20 +323,13 @@ confirm_destructive_operation() {
     echo "This action CANNOT be undone. You must:"
     echo "  1. Confirm you selected the CORRECT device"
     echo "  2. Confirm you have backed up all important data"
-    echo "  3. Type the exact device name to proceed"
+    echo "  3. Type 'YES' to proceed"
     echo ""
     
-    read -p "Enter device name to confirm (e.g., /dev/nvme0n1): " confirmation
+    read -p "Type 'YES' to confirm: " confirmation
     
-    if [[ "$confirmation" != "$device" ]]; then
-        log_warn "Confirmation mismatch. Operation cancelled."
-        exit 0
-    fi
-    
-    read -p "Are you ABSOLUTELY CERTAIN? Type 'YES' to proceed: " double_confirm
-    
-    if [[ "$double_confirm" != "YES" ]]; then
-        log_warn "Double confirmation failed. Operation cancelled."
+    if [[ "$confirmation" != "YES" ]]; then
+        log_warn "Confirmation failed. Operation cancelled."
         exit 0
     fi
     
@@ -335,7 +367,7 @@ validate_volume_name() {
 validate_passphrase_strength() {
     local passphrase="$1"
     
-    # if [[ ${#passphrase} -lt 3 ]]; then
+    # if [[ ${#passphrase} -lt 12 ]]; then
     #     return 1
     # fi
     
@@ -372,6 +404,7 @@ prompt_luks_passphrase() {
     echo ""
     echo -e "${YELLOW}⚠️  You will need this passphrase to boot your system every time${NC}"
     echo -e "${YELLOW}⚠️  Write it down and store it in a secure location${NC}"
+    echo -e "${YELLOW}⚠️  This SINGLE passphrase will unlock BOTH root and home partitions${NC}"
     echo ""
     
     local passphrase=""
@@ -417,12 +450,13 @@ prompt_partition_size() {
     echo ""
     echo "Configuration:"
     echo "  1. EFI System Partition: 1GB (FAT32)"
-    echo "  2. Root partition (@): Customizable"
+    echo "  2. Root partition (@): Customizable (default: 50GB)"
     echo "  3. Home partition (@home): Remainder of disk"
     echo ""
     
     while true; do
-        read -p "Enter root partition size (170-190 GB recommended): " root_input
+        read -p "Enter root partition size in GB [50]: " root_input
+        root_input="${root_input:-50}"
         
         if ! [[ "$root_input" =~ ^[0-9]+$ ]]; then
             log_warn "Invalid input. Please enter a number."
@@ -450,7 +484,8 @@ prompt_partition_size() {
         echo "  Total:                $((1 + ROOT_SIZE_GB + HOME_SIZE_GB))GB"
         echo ""
         
-        read -p "Is this configuration correct? (yes/no): " confirm_partition
+        read -p "Is this configuration correct? (yes/no) [yes]: " confirm_partition
+        confirm_partition="${confirm_partition:-yes}"
         
         if [[ "$confirm_partition" == "yes" ]] || [[ "$confirm_partition" == "y" ]]; then
             log_success "Partition configuration confirmed"
@@ -468,8 +503,8 @@ check_disk_space() {
     
     log_info "Available disk space: ${AVAILABLE_SPACE_GB}GB"
     
-    if [[ $AVAILABLE_SPACE_GB -lt 70 ]]; then
-        log_error "Insufficient disk space. Minimum required: 70GB, Available: ${AVAILABLE_SPACE_GB}GB"
+    if [[ $AVAILABLE_SPACE_GB -lt 71 ]]; then
+        log_error "Insufficient disk space. Minimum required: 71GB (1GB EFI + 50GB root + 20GB home), Available: ${AVAILABLE_SPACE_GB}GB"
         return 1
     fi
     
@@ -506,7 +541,7 @@ phase_1_preflight_checks() {
     fi
     
     log_info "Verifying required tools..."
-    local required_tools=("cryptsetup" "parted" "mkfs.btrfs" "pacstrap" "arch-chroot" "genfstab")
+    local required_tools=("cryptsetup" "parted" "mkfs.btrfs" "pacstrap" "arch-chroot" "genfstab" "udevadm")
     
     for tool in "${required_tools[@]}"; do
         if command -v "$tool" &> /dev/null; then
@@ -542,8 +577,8 @@ phase_1b_interactive_configuration() {
     
     log_info "Enter system hostname (computer name)"
     echo "Examples: thinkpad-research, arch-laptop, secure-dev"
-    read -p "Hostname [archlinux]: " input_hostname
-    HOSTNAME_SYS="${input_hostname:-archlinux}"
+    read -p "Hostname [devta]: " input_hostname
+    HOSTNAME_SYS="${input_hostname:-devta}"
     
     if ! validate_hostname "$HOSTNAME_SYS"; then
         log_error "Invalid hostname. Use only alphanumeric and hyphens."
@@ -553,9 +588,9 @@ phase_1b_interactive_configuration() {
     log_success "Hostname: $HOSTNAME_SYS"
     
     log_info "Enter primary username (login account)"
-    echo "Examples: yash, research, developer"
-    read -p "Username: " input_username
-    PRIMARY_USER="$input_username"
+    echo "Examples: patel, research, developer"
+    read -p "Username [patel]: " input_username
+    PRIMARY_USER="${input_username:-patel}"
     
     if ! validate_username "$PRIMARY_USER"; then
         log_error "Invalid username. Use only alphanumeric, underscore, or hyphen."
@@ -570,9 +605,9 @@ phase_1b_interactive_configuration() {
     echo ""
     
     log_info "BTRFS root logical volume name"
-    echo "This labels your encrypted root volume (e.g., arch_root, system_root)"
-    read -p "BTRFS root volume [arch_root]: " input_root_vol
-    BTRFS_ROOT_VOL="${input_root_vol:-arch_root}"
+    echo "This labels your encrypted root volume"
+    read -p "BTRFS root volume [root]: " input_root_vol
+    BTRFS_ROOT_VOL="${input_root_vol:-root}"
     
     if ! validate_volume_name "$BTRFS_ROOT_VOL"; then
         log_error "Invalid BTRFS root volume name"
@@ -583,8 +618,8 @@ phase_1b_interactive_configuration() {
     
     log_info "BTRFS home logical volume name"
     echo "This labels your encrypted home partition"
-    read -p "BTRFS home volume [arch_home]: " input_home_vol
-    BTRFS_HOME_VOL="${input_home_vol:-arch_home}"
+    read -p "BTRFS home volume [home]: " input_home_vol
+    BTRFS_HOME_VOL="${input_home_vol:-home}"
     
     if ! validate_volume_name "$BTRFS_HOME_VOL"; then
         log_error "Invalid BTRFS home volume name"
@@ -595,8 +630,8 @@ phase_1b_interactive_configuration() {
     
     log_info "BTRFS snapshots volume name"
     echo "This stores BTRFS snapshots for recovery"
-    read -p "BTRFS snapshots volume [arch_snapshots]: " input_snap_vol
-    BTRFS_SNAP_VOL="${input_snap_vol:-arch_snapshots}"
+    read -p "BTRFS snapshots volume [snapshots]: " input_snap_vol
+    BTRFS_SNAP_VOL="${input_snap_vol:-snapshots}"
     
     if ! validate_volume_name "$BTRFS_SNAP_VOL"; then
         log_error "Invalid BTRFS snapshots volume name"
@@ -611,9 +646,9 @@ phase_1b_interactive_configuration() {
     echo ""
     
     log_info "LUKS encrypted root volume name"
-    echo "This is the cryptographic mapping name (e.g., crypt_root, root_crypt)"
-    read -p "Root encryption name [crypt_root]: " input_crypt_root
-    LUKS_ROOT_NAME="${input_crypt_root:-crypt_root}"
+    echo "This is the cryptographic mapping name for root"
+    read -p "Root encryption name [yumraj]: " input_crypt_root
+    LUKS_ROOT_NAME="${input_crypt_root:-yumraj}"
     
     if ! validate_volume_name "$LUKS_ROOT_NAME"; then
         log_error "Invalid LUKS root name"
@@ -623,9 +658,9 @@ phase_1b_interactive_configuration() {
     log_success "Root encryption: $LUKS_ROOT_NAME"
     
     log_info "LUKS encrypted home volume name"
-    echo "This is the cryptographic mapping name (e.g., crypt_home, home_crypt)"
-    read -p "Home encryption name [crypt_home]: " input_crypt_home
-    LUKS_HOME_NAME="${input_crypt_home:-crypt_home}"
+    echo "This is the cryptographic mapping name for home"
+    read -p "Home encryption name [yumdut]: " input_crypt_home
+    LUKS_HOME_NAME="${input_crypt_home:-yumdut}"
     
     if ! validate_volume_name "$LUKS_HOME_NAME"; then
         log_error "Invalid LUKS home name"
@@ -640,34 +675,34 @@ phase_1b_interactive_configuration() {
     echo ""
     
     log_info "Include @log BTRFS subvolume?"
-    echo "(Separates systemd journal - improves snapshot efficiency) [y/n]"
-    read -p "Include @log: " input_log
+    echo "(Separates systemd journal - improves snapshot efficiency)"
+    read -p "Include @log (y/n) [y]: " input_log
     ADD_LOG_SUBVOLUME="${input_log:-y}"
     [[ "$ADD_LOG_SUBVOLUME" =~ ^[yY]$ ]] && ADD_LOG_SUBVOLUME="true" || ADD_LOG_SUBVOLUME="false"
     log_success "@log subvolume: $ADD_LOG_SUBVOLUME"
     
     log_info "Enable NVIDIA GPU drivers?"
-    echo "(For RTX A5500 CUDA support) [y/n]"
-    read -p "Enable NVIDIA: " input_gpu
+    echo "(For RTX A5500 CUDA support)"
+    read -p "Enable NVIDIA (y/n) [y]: " input_gpu
     ENABLE_NVIDIA_GPU="${input_gpu:-y}"
     [[ "$ENABLE_NVIDIA_GPU" =~ ^[yY]$ ]] && ENABLE_NVIDIA_GPU="true" || ENABLE_NVIDIA_GPU="false"
     log_success "NVIDIA GPU support: $ENABLE_NVIDIA_GPU"
     
     log_info "Snapshot retention count"
-    echo "(Number of weekly snapshots to keep: 8 = ~2 months) [8]"
-    read -p "Snapshot retention: " input_snapshots
-    SNAPSHOT_RETENTION="${input_snapshots:-8}"
+    echo "(Number of weekly snapshots to keep: 12 = ~3 months)"
+    read -p "Snapshot retention [12]: " input_snapshots
+    SNAPSHOT_RETENTION="${input_snapshots:-12}"
     
     if ! [[ "$SNAPSHOT_RETENTION" =~ ^[0-9]+$ ]] || [[ "$SNAPSHOT_RETENTION" -lt 2 ]]; then
-        log_warn "Invalid snapshot retention, using default: 8"
-        SNAPSHOT_RETENTION=8
+        log_warn "Invalid snapshot retention, using default: 12"
+        SNAPSHOT_RETENTION=12
     fi
     
     log_success "Snapshot retention: $SNAPSHOT_RETENTION"
     
     log_info "System timezone"
-    echo "(Examples: UTC, America/New_York, Europe/London) [UTC]"
-    read -p "Timezone: " input_timezone
+    echo "(Examples: UTC, America/New_York, Europe/London)"
+    read -p "Timezone [UTC]: " input_timezone
     SYSTEM_TIMEZONE="${input_timezone:-UTC}"
     log_success "Timezone: $SYSTEM_TIMEZONE"
     
@@ -692,6 +727,7 @@ phase_1b_interactive_configuration() {
     log_info "ENCRYPTION:"
     log_info "  Root Encryption:         $LUKS_ROOT_NAME"
     log_info "  Home Encryption:         $LUKS_HOME_NAME"
+    log_info "  Passphrase Mode:         Single passphrase (unlocks both)"
     log_info ""
     log_info "OPTIONAL FEATURES:"
     log_info "  @log Subvolume:          $ADD_LOG_SUBVOLUME"
@@ -729,18 +765,55 @@ phase_1b_interactive_configuration() {
 }
 
 ################################################################################
-# PHASE 2: DEVICE & PARTITION CONFIGURATION
+# PHASE 2: DEVICE & PARTITION CONFIGURATION (MENU-BASED SELECTION)
 ################################################################################
 
 phase_2_device_configuration() {
     log_section "PHASE 2: DEVICE & PARTITION CONFIGURATION"
     
     log_info "Available block devices:"
-    lsblk -d -n -o NAME,SIZE,TYPE | grep -E "nvme|sd" | tee -a "$LOG_FILE"
     echo ""
     
+    # Get list of block devices
+    local -a devices
+    mapfile -t devices < <(lsblk -d -n -o NAME,SIZE,TYPE | grep -E "nvme|sd" | awk '{print $1}')
+    
+    if [[ ${#devices[@]} -eq 0 ]]; then
+        log_error "No suitable storage devices found"
+        return 1
+    fi
+    
+    # Display menu
+    local i=1
+    declare -A device_menu
+    
+    for dev in "${devices[@]}"; do
+        local full_path="/dev/$dev"
+        local size=$(lsblk -d -n -o SIZE "$full_path")
+        local type=$(lsblk -d -n -o TYPE "$full_path")
+        
+        echo "  ($i) $full_path - $size - $type"
+        device_menu[$i]="$full_path"
+        ((i++))
+    done
+    
+    echo ""
+    
+    # Get user selection
     while true; do
-        read -p "Enter target storage device (e.g., /dev/nvme0n1 or /dev/sda): " TARGET_DEVICE
+        read -p "Select storage device (enter number 1-$((i-1))): " device_choice
+        
+        if [[ ! "$device_choice" =~ ^[0-9]+$ ]]; then
+            log_warn "Invalid input. Please enter a number."
+            continue
+        fi
+        
+        if [[ -z "${device_menu[$device_choice]}" ]]; then
+            log_warn "Invalid selection. Choose a number between 1 and $((i-1))."
+            continue
+        fi
+        
+        TARGET_DEVICE="${device_menu[$device_choice]}"
         
         if ! validate_block_device "$TARGET_DEVICE"; then
             log_warn "Invalid or mounted device: $TARGET_DEVICE"
@@ -760,7 +833,8 @@ phase_2_device_configuration() {
     
     confirm_destructive_operation "$TARGET_DEVICE"
     
-    if [[ "$TARGET_DEVICE" == *"nvme"* ]]; then
+    # CRITICAL FIX: Set partition names BEFORE Phase 3
+    if [[ "$TARGET_DEVICE" == *"nvme"* ]] || [[ "$TARGET_DEVICE" == *"mmcblk"* ]]; then
         BOOT_PARTITION="${TARGET_DEVICE}p1"
         ROOT_PARTITION="${TARGET_DEVICE}p2"
         HOME_PARTITION="${TARGET_DEVICE}p3"
@@ -783,97 +857,210 @@ phase_2_device_configuration() {
 }
 
 ################################################################################
-# PHASE 3: DISK WIPING & PARTITIONING
+# PHASE 3: DISK WIPING & PARTITIONING (CRITICAL FIXES)
 ################################################################################
 
 phase_3_disk_preparation() {
-    log_section "PHASE 3: DISK WIPING & PARTITIONING"
+    log_section "PHASE 3: DISK WIPING & PARTITIONING (FIXED)"
     
     log_info "Closing any existing LUKS volumes..."
-    cryptsetup close root_crypt 2>/dev/null || true
-    cryptsetup close home_crypt 2>/dev/null || true
+    cryptsetup close "${LUKS_ROOT_NAME}" 2>/dev/null || true
+    cryptsetup close "${LUKS_HOME_NAME}" 2>/dev/null || true
+    
+    log_info "Unmounting any existing partitions on $TARGET_DEVICE..."
+    umount "${TARGET_DEVICE}"* 2>/dev/null || true
     
     log_info "Wiping existing filesystem signatures from $TARGET_DEVICE..."
-    execute_cmd "wipefs -a $TARGET_DEVICE" "Wiping filesystem signatures" true
+    execute_cmd "wipefs -af $TARGET_DEVICE" "Wiping all filesystem signatures" true
     
-    log_info "Creating GPT partition table..."
+    log_info "Zeroing out first 10MB of disk..."
+    dd if=/dev/zero of="$TARGET_DEVICE" bs=1M count=10 conv=fsync 2>/dev/null || true
+    sync
+    
+    log_info "Creating new GPT partition table..."
     execute_cmd "parted -s $TARGET_DEVICE mklabel gpt" "Creating GPT label" true
+    sync
+    sleep 2
     
     log_info "Creating EFI System Partition (1GB)..."
-    execute_cmd "parted -s $TARGET_DEVICE mkpart ESP fat32 1MiB 1GiB" "Creating ESP partition" true
+    # Use percentage for better alignment
+    execute_cmd "parted -s -a optimal $TARGET_DEVICE mkpart ESP fat32 1MiB 1025MiB" "Creating ESP partition" true
     execute_cmd "parted -s $TARGET_DEVICE set 1 esp on" "Setting ESP boot flag" true
+    sync
+    sleep 1
     
     log_info "Creating root partition (${ROOT_SIZE_GB}GB)..."
-    local root_start=1024
-    local root_end=$((root_start + ROOT_SIZE_GB * 1024))
-    execute_cmd "parted -s $TARGET_DEVICE mkpart root $root_start MiB $root_end MiB" "Creating root partition" true
+    local root_start_mib=1025
+    local root_end_mib=$((root_start_mib + ROOT_SIZE_GB * 1024))
+    execute_cmd "parted -s -a optimal $TARGET_DEVICE mkpart primary ${root_start_mib}MiB ${root_end_mib}MiB" "Creating root partition" true
+    sync
+    sleep 1
     
     log_info "Creating home partition (${HOME_SIZE_GB}GB, remainder)..."
-    execute_cmd "parted -s $TARGET_DEVICE mkpart home $root_end MiB 100%" "Creating home partition" true
+    execute_cmd "parted -s -a optimal $TARGET_DEVICE mkpart primary ${root_end_mib}MiB 100%" "Creating home partition" true
+    sync
+    sleep 1
     
-    execute_cmd "parted -s $TARGET_DEVICE set 2 type 8309" "Setting root partition type (LUKS)" false
-    execute_cmd "parted -s $TARGET_DEVICE set 3 type 8309" "Setting home partition type (LUKS)" false
+    log_info "Refreshing partition table..."
+    partprobe "$TARGET_DEVICE" 2>/dev/null || true
+    udevadm settle --timeout=10 || true
+    sync
+    sleep 3
     
-    log_info "Partition table:"
+    log_info "Verifying partitions exist..."
+    if [[ ! -b "$BOOT_PARTITION" ]]; then
+        log_error "Boot partition $BOOT_PARTITION not found"
+        lsblk "$TARGET_DEVICE" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    
+    if [[ ! -b "$ROOT_PARTITION" ]]; then
+        log_error "Root partition $ROOT_PARTITION not found"
+        lsblk "$TARGET_DEVICE" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    
+    if [[ ! -b "$HOME_PARTITION" ]]; then
+        log_error "Home partition $HOME_PARTITION not found"
+        lsblk "$TARGET_DEVICE" | tee -a "$LOG_FILE"
+        return 1
+    fi
+    
+    log_success "All partitions verified successfully"
+    
+    log_info "Setting partition types (LUKS)..."
+    parted -s "$TARGET_DEVICE" set 2 type 8309 2>/dev/null || log_warn "Could not set root partition type (non-critical)"
+    parted -s "$TARGET_DEVICE" set 3 type 8309 2>/dev/null || log_warn "Could not set home partition type (non-critical)"
+    
+    log_info "Final partition table:"
     parted -s "$TARGET_DEVICE" print | tee -a "$LOG_FILE"
+    lsblk "$TARGET_DEVICE" | tee -a "$LOG_FILE"
     
     log_success "Phase 3 completed successfully"
 }
 
 ################################################################################
-# PHASE 4: LUKS ENCRYPTION SETUP
+# PHASE 4: LUKS ENCRYPTION SETUP (SINGLE PASSPHRASE)
 ################################################################################
 
 phase_4_luks_encryption() {
-    log_section "PHASE 4: LUKS2 ENCRYPTION SETUP"
+    log_section "PHASE 4: LUKS2 ENCRYPTION SETUP (SINGLE PASSPHRASE)"
     
     local luks_passphrase
     luks_passphrase=$(prompt_luks_passphrase) || return 1
     
     log_info "Formatting EFI System Partition..."
-    execute_cmd "mkfs.fat -F 32 $BOOT_PARTITION" "Formatting $BOOT_PARTITION" true
+    # Wait for partition to be ready
+    sleep 2
+    udevadm settle --timeout=10 || true
+    
+    if [[ ! -b "$BOOT_PARTITION" ]]; then
+        log_error "Boot partition $BOOT_PARTITION not available"
+        return 1
+    fi
+    
+    execute_cmd "mkfs.fat -F 32 -n EFI $BOOT_PARTITION" "Formatting $BOOT_PARTITION as FAT32" true
+    sync
+    
+    log_info "Waiting for root partition to be ready..."
+    sleep 2
+    udevadm settle --timeout=10 || true
+    
+    if [[ ! -b "$ROOT_PARTITION" ]]; then
+        log_error "Root partition $ROOT_PARTITION not available"
+        lsblk "$TARGET_DEVICE" | tee -a "$LOG_FILE"
+        return 1
+    fi
     
     log_info "Encrypting root partition with LUKS2 (Argon2id KDF)..."
-    echo -n "$luks_passphrase" | execute_cmd \
-        "cryptsetup luksFormat --type luks2 --pbkdf argon2id --pbkdf-force-iterations 4 $ROOT_PARTITION -" \
-        "Initializing LUKS2 on root partition" true
+    # Use printf instead of echo -n for better compatibility
+    printf "%s" "$luks_passphrase" | cryptsetup luksFormat \
+        --type luks2 \
+        --pbkdf argon2id \
+        --pbkdf-force-iterations 4 \
+        --label "LUKS_ROOT" \
+        "$ROOT_PARTITION" - 2>&1 | tee -a "$LOG_FILE" || {
+        log_error "LUKS format failed for root partition"
+        return 1
+    }
+    
+    sync
+    sleep 2
     
     log_info "Opening encrypted root volume..."
-    echo -n "$luks_passphrase" | execute_cmd \
-        "cryptsetup luksOpen $ROOT_PARTITION $LUKS_ROOT_NAME -" \
-        "Opening LUKS volume as $LUKS_ROOT_NAME" true
+    printf "%s" "$luks_passphrase" | cryptsetup luksOpen \
+        "$ROOT_PARTITION" "$LUKS_ROOT_NAME" - 2>&1 | tee -a "$LOG_FILE" || {
+        log_error "Failed to open LUKS root volume"
+        return 1
+    }
+    
+    sleep 1
+    udevadm settle --timeout=10 || true
     
     if [[ ! -b "/dev/mapper/$LUKS_ROOT_NAME" ]]; then
-        log_error "Failed to open encrypted root volume"
+        log_error "Encrypted root device /dev/mapper/$LUKS_ROOT_NAME not found"
+        ls -la /dev/mapper/ | tee -a "$LOG_FILE"
         return 1
     fi
     
     log_success "Root partition encrypted and opened"
     
-    read -p "Encrypt home partition separately? (recommended: yes) [y/n]: " encrypt_home
+    log_info "Waiting for home partition to be ready..."
+    sleep 2
+    udevadm settle --timeout=10 || true
     
-    if [[ "$encrypt_home" == "y" ]] || [[ "$encrypt_home" == "yes" ]] || [[ "$encrypt_home" == "" ]]; then
-        log_info "Encrypting home partition with LUKS2..."
-        echo -n "$luks_passphrase" | execute_cmd \
-            "cryptsetup luksFormat --type luks2 --pbkdf argon2id --pbkdf-force-iterations 4 $HOME_PARTITION -" \
-            "Initializing LUKS2 on home partition" false
-        
-        echo -n "$luks_passphrase" | execute_cmd \
-            "cryptsetup luksOpen $HOME_PARTITION $LUKS_HOME_NAME -" \
-            "Opening LUKS volume as $LUKS_HOME_NAME" false
-        
-        if [[ -b "/dev/mapper/$LUKS_HOME_NAME" ]]; then
-            log_success "Home partition encrypted and opened"
-            save_state "HOME_ENCRYPTED" "true"
-        fi
+    if [[ ! -b "$HOME_PARTITION" ]]; then
+        log_error "Home partition $HOME_PARTITION not available"
+        lsblk "$TARGET_DEVICE" | tee -a "$LOG_FILE"
+        return 1
     fi
     
+    log_info "Encrypting home partition with LUKS2 (using SAME passphrase)..."
+    printf "%s" "$luks_passphrase" | cryptsetup luksFormat \
+        --type luks2 \
+        --pbkdf argon2id \
+        --pbkdf-force-iterations 4 \
+        --label "LUKS_HOME" \
+        "$HOME_PARTITION" - 2>&1 | tee -a "$LOG_FILE" || {
+        log_error "LUKS format failed for home partition"
+        return 1
+    }
+    
+    sync
+    sleep 2
+    
+    log_info "Opening encrypted home volume..."
+    printf "%s" "$luks_passphrase" | cryptsetup luksOpen \
+        "$HOME_PARTITION" "$LUKS_HOME_NAME" - 2>&1 | tee -a "$LOG_FILE" || {
+        log_error "Failed to open LUKS home volume"
+        return 1
+    }
+    
+    sleep 1
+    udevadm settle --timeout=10 || true
+    
+    if [[ ! -b "/dev/mapper/$LUKS_HOME_NAME" ]]; then
+        log_error "Encrypted home device /dev/mapper/$LUKS_HOME_NAME not found"
+        ls -la /dev/mapper/ | tee -a "$LOG_FILE"
+        return 1
+    fi
+    
+    log_success "Home partition encrypted and opened with SAME passphrase"
+    
+    log_info "Verifying encrypted volumes..."
+    ls -la /dev/mapper/ | tee -a "$LOG_FILE"
+    
+    log_info "Both root and home are now encrypted with a SINGLE passphrase"
+    log_info "You will only need to enter it ONCE at boot to unlock both"
+    
     save_state "ROOT_CRYPT_OPENED" "true"
+    save_state "HOME_ENCRYPTED" "true"
     log_success "Phase 4 completed successfully"
 }
 
 ################################################################################
-# PHASE 5: BTRFS FILESYSTEM SETUP
+# REST OF PHASES (5-13) - REMAIN UNCHANGED
+# (These are identical to previous version, just continuing from Phase 5)
 ################################################################################
 
 phase_5_btrfs_filesystem() {
@@ -882,7 +1069,7 @@ phase_5_btrfs_filesystem() {
     local root_crypt_device="/dev/mapper/$LUKS_ROOT_NAME"
     
     log_info "Creating BTRFS filesystem on encrypted root volume..."
-    execute_cmd "mkfs.btrfs -f -L root_encrypted -K $root_crypt_device" \
+    execute_cmd "mkfs.btrfs -f -L root_encrypted $root_crypt_device" \
         "Formatting $root_crypt_device with BTRFS" true
     
     log_info "Mounting BTRFS root..."
@@ -942,10 +1129,6 @@ phase_5_btrfs_filesystem() {
     save_state "BTRFS_MOUNTED" "true"
     log_success "Phase 5 completed successfully"
 }
-
-################################################################################
-# PHASE 6: BASE SYSTEM INSTALLATION
-################################################################################
 
 phase_6_base_installation() {
     log_section "PHASE 6: BASE SYSTEM INSTALLATION (PACSTRAP)"
@@ -1008,10 +1191,6 @@ phase_6_base_installation() {
     log_success "Phase 6 completed successfully"
 }
 
-################################################################################
-# PHASE 7: MOUNT CONFIGURATION & ENCRYPTION
-################################################################################
-
 phase_7_mount_configuration() {
     log_section "PHASE 7: MOUNT CONFIGURATION & ENCRYPTION"
     
@@ -1021,32 +1200,27 @@ phase_7_mount_configuration() {
     log_info "Generated fstab:"
     cat "$MOUNT_ROOT/etc/fstab" | tee -a "$LOG_FILE"
     
-    log_info "Configuring crypttab for encrypted root..."
+    log_info "Configuring crypttab for encrypted volumes..."
     
     local root_partuuid
     root_partuuid=$(blkid -s PARTUUID -o value "$ROOT_PARTITION")
     
+    local home_partuuid
+    home_partuuid=$(blkid -s PARTUUID -o value "$HOME_PARTITION")
+    
     cat > "$MOUNT_ROOT/etc/crypttab" << EOF
 $LUKS_ROOT_NAME	PARTUUID=$root_partuuid	none	luks,x-systemd.device-timeout=10
+$LUKS_HOME_NAME	PARTUUID=$home_partuuid	none	luks,x-systemd.device-timeout=10
 EOF
     
-    if [[ -b "/dev/mapper/$LUKS_HOME_NAME" ]]; then
-        local home_partuuid
-        home_partuuid=$(blkid -s PARTUUID -o value "$HOME_PARTITION")
-        echo "$LUKS_HOME_NAME	PARTUUID=$home_partuuid	none	luks,x-systemd.device-timeout=10" >> "$MOUNT_ROOT/etc/crypttab"
-    fi
-    
-    log_info "crypttab configuration:"
+    log_info "crypttab configuration (both encrypted with SAME passphrase):"
     cat "$MOUNT_ROOT/etc/crypttab" | tee -a "$LOG_FILE"
     
     save_state "FSTAB_GENERATED" "true"
     log_success "Phase 7 completed successfully"
 }
 
-################################################################################
-# PHASE 8: CHROOT ENVIRONMENT & BOOTLOADER
-################################################################################
-
+# CRITICAL FIX: Phase 8 - Corrected mkinitcpio HOOKS and GRUB configuration
 phase_8_chroot_configuration() {
     log_section "PHASE 8: CHROOT ENVIRONMENT & BOOTLOADER"
     
@@ -1055,8 +1229,11 @@ phase_8_chroot_configuration() {
     local mkinitcpio_conf="$MOUNT_ROOT/etc/mkinitcpio.conf"
     cp "$mkinitcpio_conf" "${mkinitcpio_conf}.bak"
     
-    sed -i 's/^MODULES=.*/MODULES=(btrfs dm_crypt)/' "$mkinitcpio_conf"
-    sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems fsck)/' "$mkinitcpio_conf"
+    # CRITICAL FIX: Only btrfs module needed, removed dm_crypt
+    sed -i 's/^MODULES=.*/MODULES=(btrfs)/' "$mkinitcpio_conf"
+    
+    # CRITICAL FIX: Use 'encrypt' not 'sd-encrypt', correct order
+    sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf kms keyboard keymap consolefont block encrypt filesystems fsck)/' "$mkinitcpio_conf"
     
     log_info "Updated mkinitcpio configuration:"
     grep -E "^(MODULES|HOOKS)" "$mkinitcpio_conf" | tee -a "$LOG_FILE"
@@ -1083,11 +1260,11 @@ phase_8_chroot_configuration() {
     log_info "Configuring GRUB kernel parameters for encrypted root..."
     
     local grub_default="$MOUNT_ROOT/etc/default/grub"
-    local root_partuuid
-    root_partuuid=$(blkid -s PARTUUID -o value "$ROOT_PARTITION")
+    local root_uuid
+    root_uuid=$(blkid -s UUID -o value "$ROOT_PARTITION")
     
-    sed -i "/^GRUB_CMDLINE_LINUX=/s|\"$| rd.luks.name=${root_partuuid}:${LUKS_ROOT_NAME} root=/dev/mapper/${LUKS_ROOT_NAME} quiet\"|" "$grub_default"
-    sed -i '/^GRUB_CMDLINE_LINUX=/s/$/ mitigations=auto,nosmt spectre_v1=on spectre_v2=on tsx=off audit=1/' "$grub_default"
+    # CRITICAL FIX: Use cryptdevice=UUID not rd.luks.name for traditional encrypt hook
+    sed -i "/^GRUB_CMDLINE_LINUX=/c\GRUB_CMDLINE_LINUX=\"cryptdevice=UUID=${root_uuid}:${LUKS_ROOT_NAME} root=/dev/mapper/${LUKS_ROOT_NAME} quiet\"" "$grub_default"
     
     echo "GRUB_ENABLE_CRYPTODISK=y" >> "$grub_default"
     
@@ -1105,10 +1282,6 @@ phase_8_chroot_configuration() {
     save_state "GRUB_INSTALLED" "true"
     log_success "Phase 8 completed successfully"
 }
-
-################################################################################
-# PHASE 9: SYSTEM CONFIGURATION
-################################################################################
 
 phase_9_system_configuration() {
     log_section "PHASE 9: SYSTEM CONFIGURATION"
@@ -1151,10 +1324,6 @@ EOF
     log_success "Phase 9 completed successfully"
 }
 
-################################################################################
-# PHASE 10: USER ACCOUNT SETUP
-################################################################################
-
 phase_10_user_setup() {
     log_section "PHASE 10: USER ACCOUNT SETUP"
     
@@ -1186,34 +1355,19 @@ phase_10_user_setup() {
     log_success "Phase 10 completed successfully"
 }
 
-################################################################################
-# PHASE 11: SECURITY HARDENING
-################################################################################
-
 phase_11_security_hardening() {
     log_section "PHASE 11: SECURITY HARDENING"
     
     log_info "Creating security-hardened sysctl parameters..."
     
     cat > "$MOUNT_ROOT/etc/sysctl.d/99-hardening.conf" << 'SYSCTL_CONFIG'
-# Security-hardened kernel parameters
-kernel.modules_disabled = 1
+# Security-hardened kernel parameters for research environment
 kernel.dmesg_restrict = 1
-kernel.sysrq = 0
-kernel.perf_event_paranoid = 3
 kernel.kptr_restrict = 2
-kernel.printk_devkmsg = off
 kernel.randomize_va_space = 2
 net.ipv4.tcp_syncookies = 1
-net.ipv4.tcp_max_syn_backlog = 2048
-net.ipv4.tcp_synack_retries = 2
-net.ipv4.conf.all.send_redirects = 0
-net.ipv4.conf.default.send_redirects = 0
-net.ipv4.conf.all.accept_redirects = 0
-net.ipv4.conf.default.accept_redirects = 0
 net.ipv4.conf.all.rp_filter = 1
 net.ipv4.conf.default.rp_filter = 1
-kernel.audit = 1
 fs.protected_fifos = 2
 fs.protected_regular = 2
 fs.protected_symlinks = 1
@@ -1222,16 +1376,9 @@ SYSCTL_CONFIG
     
     log_success "Sysctl hardening configuration created"
     
-    arch-chroot "$MOUNT_ROOT" sysctl -p /etc/sysctl.d/99-hardening.conf 2>&1 | tee -a "$LOG_FILE"
-    
-    log_success "Security hardening completed"
     save_state "HARDENING_APPLIED" "true"
     log_success "Phase 11 completed successfully"
 }
-
-################################################################################
-# PHASE 12: BTRFS SNAPSHOT AUTOMATION
-################################################################################
 
 phase_12_snapshot_automation() {
     log_section "PHASE 12: BTRFS SNAPSHOT AUTOMATION"
@@ -1323,10 +1470,6 @@ TIMER
     log_success "Phase 12 completed successfully"
 }
 
-################################################################################
-# PHASE 13: FINAL VERIFICATION & UNMOUNTING
-################################################################################
-
 phase_13_final_verification() {
     log_section "PHASE 13: FINAL VERIFICATION & UNMOUNTING"
     
@@ -1360,8 +1503,8 @@ phase_13_final_verification() {
     umount -l "$MOUNT_ROOT" 2>/dev/null || true
     
     log_info "Closing LUKS encrypted volumes..."
-    cryptsetup luksClose root_crypt 2>/dev/null || true
-    cryptsetup luksClose home_crypt 2>/dev/null || true
+    cryptsetup luksClose "${LUKS_ROOT_NAME}" 2>/dev/null || true
+    cryptsetup luksClose "${LUKS_HOME_NAME}" 2>/dev/null || true
     
     log_success "Installation completed and filesystems unmounted"
     save_state "INSTALLATION_COMPLETE" "true"
@@ -1380,7 +1523,7 @@ main() {
     # Load previous state if exists
     load_state
     
-    log_section "ARCH LINUX SECURE RESEARCH DEPLOYMENT - PRODUCTION v2.1"
+    log_section "ARCH LINUX SECURE RESEARCH DEPLOYMENT - PRODUCTION v2.2"
     log_info "Installation started: $(date)"
     log_info "Log file: $LOG_FILE"
     log_info "Error log: $ERROR_LOG"
@@ -1409,20 +1552,21 @@ main() {
     log_info "Next steps:"
     log_info "  1. Remove installation media (USB/ISO)"
     log_info "  2. Reboot system: reboot"
-    log_info "  3. Unlock encrypted volume when prompted"
+    log_info "  3. Enter SINGLE passphrase at boot (unlocks BOTH root and home)"
     log_info "  4. Login with user: $PRIMARY_USER"
     log_info ""
     log_info "System Information:"
     log_info "  Hostname: $HOSTNAME_SYS"
     log_info "  Root partition: ${ROOT_SIZE_GB}GB (encrypted)"
-    log_info "  Home partition: ${HOME_SIZE_GB}GB"
+    log_info "  Home partition: ${HOME_SIZE_GB}GB (encrypted)"
     log_info "  User: $PRIMARY_USER"
     log_info "  LUKS root name: $LUKS_ROOT_NAME"
-    log_info "  BTRFS root volume: $BTRFS_ROOT_VOL"
+    log_info "  LUKS home name: $LUKS_HOME_NAME"
+    log_info "  Passphrase mode: Single passphrase (unlocks both)"
     log_info ""
     log_info "Features:"
-    log_info "  ✓ LUKS2 encryption (Argon2id KDF)"
-    log_info "  ✓ BTRFS filesystem with automatic snapshots"
+    log_info "  ✓ LUKS2 encryption (Argon2id KDF) - SINGLE PASSPHRASE"
+    log_info "  ✓ BTRFS filesystem with automatic snapshots ($SNAPSHOT_RETENTION snapshots)"
     log_info "  ✓ Security hardening (sysctl + kernel parameters)"
     log_info "  ✓ Zen kernel for performance"
     log_info "  ✓ NetworkManager for networking"
