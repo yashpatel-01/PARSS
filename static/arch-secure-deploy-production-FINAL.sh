@@ -949,8 +949,11 @@ phase_4_luks_encryption() {
     local luks_passphrase
     luks_passphrase=$(prompt_luks_passphrase) || return 1
     
+    # ═══════════════════════════════════════════════════════════
+    # FORMAT EFI SYSTEM PARTITION
+    # ═══════════════════════════════════════════════════════════
+    
     log_info "Formatting EFI System Partition..."
-    # Wait for partition to be ready
     sleep 2
     udevadm settle --timeout=10 || true
     
@@ -962,7 +965,11 @@ phase_4_luks_encryption() {
     execute_cmd "mkfs.fat -F 32 -n EFI $BOOT_PARTITION" "Formatting $BOOT_PARTITION as FAT32" true
     sync
     
-    log_info "Waiting for root partition to be ready..."
+    # ═══════════════════════════════════════════════════════════
+    # ENCRYPT ROOT PARTITION (FIXED METHOD)
+    # ═══════════════════════════════════════════════════════════
+    
+    log_info "Preparing root partition for encryption..."
     sleep 2
     udevadm settle --timeout=10 || true
     
@@ -972,27 +979,71 @@ phase_4_luks_encryption() {
         return 1
     fi
     
+    # Check if already encrypted (cleanup from previous failed attempt)
+    if cryptsetup isLuks "$ROOT_PARTITION" 2>/dev/null; then
+        log_warn "Root partition already has LUKS header"
+        log_warn "Erasing existing LUKS header..."
+        echo "YES" | cryptsetup luksErase "$ROOT_PARTITION" 2>/dev/null || true
+        sync
+        sleep 2
+    fi
+    
     log_info "Encrypting root partition with LUKS2 (Argon2id KDF)..."
-    # Use printf instead of echo -n for better compatibility
-    printf "%s" "$luks_passphrase" | cryptsetup luksFormat \
+    
+    # CRITICAL FIX: Use temporary keyfile instead of pipe
+    local temp_keyfile_root="/tmp/luks-root-key-$$"
+    echo -n "$luks_passphrase" > "$temp_keyfile_root"
+    chmod 600 "$temp_keyfile_root"
+    
+    # LUKS format with keyfile
+    if ! cryptsetup luksFormat \
         --type luks2 \
         --pbkdf argon2id \
         --pbkdf-force-iterations 4 \
         --label "LUKS_ROOT" \
-        "$ROOT_PARTITION" - 2>&1 | tee -a "$LOG_FILE" || {
+        --key-file "$temp_keyfile_root" \
+        "$ROOT_PARTITION" 2>&1 | tee -a "$LOG_FILE"; then
+        
+        shred -vfz -n 3 "$temp_keyfile_root" 2>/dev/null || rm -f "$temp_keyfile_root"
         log_error "LUKS format failed for root partition"
         return 1
-    }
+    fi
     
+    log_success "LUKS format completed"
+    
+    # Wait for LUKS metadata to be written
     sync
-    sleep 2
+    sleep 3
+    udevadm settle --timeout=10 || true
+    
+    # Verify LUKS header
+    if ! cryptsetup isLuks "$ROOT_PARTITION"; then
+        shred -vfz -n 3 "$temp_keyfile_root" 2>/dev/null || rm -f "$temp_keyfile_root"
+        log_error "LUKS header verification failed"
+        return 1
+    fi
+    
+    log_success "LUKS header verified"
+    log_info "LUKS header information:"
+    cryptsetup luksDump "$ROOT_PARTITION" 2>&1 | head -15 | tee -a "$LOG_FILE"
     
     log_info "Opening encrypted root volume..."
-    printf "%s" "$luks_passphrase" | cryptsetup luksOpen \
-        "$ROOT_PARTITION" "$LUKS_ROOT_NAME" - 2>&1 | tee -a "$LOG_FILE" || {
+    
+    # CRITICAL FIX: Use keyfile instead of pipe
+    if ! cryptsetup luksOpen \
+        --key-file "$temp_keyfile_root" \
+        "$ROOT_PARTITION" "$LUKS_ROOT_NAME" 2>&1 | tee -a "$LOG_FILE"; then
+        
+        shred -vfz -n 3 "$temp_keyfile_root" 2>/dev/null || rm -f "$temp_keyfile_root"
         log_error "Failed to open LUKS root volume"
+        log_info "Diagnostic information:"
+        cryptsetup luksDump "$ROOT_PARTITION" 2>&1 | tee -a "$LOG_FILE"
+        ls -la /dev/mapper/ | tee -a "$LOG_FILE"
         return 1
-    }
+    fi
+    
+    # Securely delete keyfile
+    shred -vfz -n 3 "$temp_keyfile_root" 2>/dev/null || rm -f "$temp_keyfile_root"
     
     sleep 1
     udevadm settle --timeout=10 || true
@@ -1003,9 +1054,14 @@ phase_4_luks_encryption() {
         return 1
     fi
     
-    log_success "Root partition encrypted and opened"
+    log_success "Root partition encrypted and opened successfully"
+    log_success "Mapped device: /dev/mapper/$LUKS_ROOT_NAME"
     
-    log_info "Waiting for home partition to be ready..."
+    # ═══════════════════════════════════════════════════════════
+    # ENCRYPT HOME PARTITION (SAME METHOD)
+    # ═══════════════════════════════════════════════════════════
+    
+    log_info "Preparing home partition for encryption..."
     sleep 2
     udevadm settle --timeout=10 || true
     
@@ -1015,26 +1071,61 @@ phase_4_luks_encryption() {
         return 1
     fi
     
+    # Check if already encrypted
+    if cryptsetup isLuks "$HOME_PARTITION" 2>/dev/null; then
+        log_warn "Home partition already has LUKS header"
+        echo "YES" | cryptsetup luksErase "$HOME_PARTITION" 2>/dev/null || true
+        sync
+        sleep 2
+    fi
+    
     log_info "Encrypting home partition with LUKS2 (using SAME passphrase)..."
-    printf "%s" "$luks_passphrase" | cryptsetup luksFormat \
+    
+    # Create secure temporary keyfile
+    local temp_keyfile_home="/tmp/luks-home-key-$$"
+    echo -n "$luks_passphrase" > "$temp_keyfile_home"
+    chmod 600 "$temp_keyfile_home"
+    
+    # LUKS format
+    if ! cryptsetup luksFormat \
         --type luks2 \
         --pbkdf argon2id \
         --pbkdf-force-iterations 4 \
         --label "LUKS_HOME" \
-        "$HOME_PARTITION" - 2>&1 | tee -a "$LOG_FILE" || {
+        --key-file "$temp_keyfile_home" \
+        "$HOME_PARTITION" 2>&1 | tee -a "$LOG_FILE"; then
+        
+        shred -vfz -n 3 "$temp_keyfile_home" 2>/dev/null || rm -f "$temp_keyfile_home"
         log_error "LUKS format failed for home partition"
         return 1
-    }
+    fi
     
     sync
-    sleep 2
+    sleep 3
+    udevadm settle --timeout=10 || true
+    
+    # Verify LUKS header
+    if ! cryptsetup isLuks "$HOME_PARTITION"; then
+        shred -vfz -n 3 "$temp_keyfile_home" 2>/dev/null || rm -f "$temp_keyfile_home"
+        log_error "LUKS header verification failed for home partition"
+        return 1
+    fi
     
     log_info "Opening encrypted home volume..."
-    printf "%s" "$luks_passphrase" | cryptsetup luksOpen \
-        "$HOME_PARTITION" "$LUKS_HOME_NAME" - 2>&1 | tee -a "$LOG_FILE" || {
+    
+    # Open with keyfile
+    if ! cryptsetup luksOpen \
+        --key-file "$temp_keyfile_home" \
+        "$HOME_PARTITION" "$LUKS_HOME_NAME" 2>&1 | tee -a "$LOG_FILE"; then
+        
+        shred -vfz -n 3 "$temp_keyfile_home" 2>/dev/null || rm -f "$temp_keyfile_home"
         log_error "Failed to open LUKS home volume"
+        cryptsetup luksDump "$HOME_PARTITION" 2>&1 | tee -a "$LOG_FILE"
         return 1
-    }
+    fi
+    
+    # Securely delete keyfile
+    shred -vfz -n 3 "$temp_keyfile_home" 2>/dev/null || rm -f "$temp_keyfile_home"
     
     sleep 1
     udevadm settle --timeout=10 || true
@@ -1047,11 +1138,17 @@ phase_4_luks_encryption() {
     
     log_success "Home partition encrypted and opened with SAME passphrase"
     
+    # ═══════════════════════════════════════════════════════════
+    # FINAL VERIFICATION
+    # ═══════════════════════════════════════════════════════════
+    
     log_info "Verifying encrypted volumes..."
     ls -la /dev/mapper/ | tee -a "$LOG_FILE"
     
-    log_info "Both root and home are now encrypted with a SINGLE passphrase"
-    log_info "You will only need to enter it ONCE at boot to unlock both"
+    log_info "LUKS status summary:"
+    log_info "  Root: $ROOT_PARTITION → /dev/mapper/$LUKS_ROOT_NAME"
+    log_info "  Home: $HOME_PARTITION → /dev/mapper/$LUKS_HOME_NAME"
+    log_info "  Single passphrase: ✓"
     
     save_state "ROOT_CRYPT_OPENED" "true"
     save_state "HOME_ENCRYPTED" "true"
