@@ -1,0 +1,12 @@
+User tor
+PIDFile /run/tor/tor.pid
+Log notice syslog
+DataDirectory /var/lib/tor
+
+# Privacy optimizations
+ClientOnly 1
+EnforceDistinctSubnets 1
+EntryNodes {us},{ca},{gb},{de}
+ExitNodes {us},{ca},{gb},{de}
+StrictNodes 1
+GeoIPExcludeUnknown 1

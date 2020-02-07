@@ -1,0 +1,23 @@
+#include <tunables/global>
+
+profile firefox /usr/lib/firefox/firefox {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+  #include <abstractions/fonts>
+  #include <abstractions/user-tmp>
+
+  # Networking
+  network inet stream,
+  network inet6 stream,
+
+  # File access
+  /usr/lib/firefox/** mr,
+  /usr/bin/firefox ix,
+  @{HOME}/.mozilla/ r,
+  @{HOME}/.mozilla/** rwk,
+  @{HOME}/Downloads/ rwk,
+  
+  # Deny everything else by default
+  deny /etc/passwd r,
+  deny /etc/shadow r,
+}
