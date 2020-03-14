@@ -327,11 +327,12 @@ confirm_destructive_operation() {
     echo "  3. Type 'YES' to proceed"
     echo ""
     
-    read -p "Type 'YES' to confirm: " confirmation
+    read -p "Type 'y' or 'Y' to confirm: " confirmation
+    echo
     
-    if [[ "$confirmation" != "YES" ]]; then
-        log_warn "Confirmation failed. Operation cancelled."
-        exit 0
+    if [[ ! "$confirmation" =~ ^[yY]([eE][sS])?$ ]]; then
+        log_error "Operation cancelled by user"
+        exit 1
     fi
     
     log_success "Destructive operation confirmed for $device"
@@ -485,14 +486,15 @@ prompt_partition_size() {
         echo "  Total:                $((1 + ROOT_SIZE_GB + HOME_SIZE_GB))GB"
         echo ""
         
-        read -p "Is this configuration correct? (yes/no) [yes]: " confirm_partition
-        confirm_partition="${confirm_partition:-yes}"
+        read -p "Is this configuration correct? (y/n) [y]: " confirm_partition
+        confirm_partition=${confirm_partition:-y}
         
-        if [[ "$confirm_partition" == "yes" ]] || [[ "$confirm_partition" == "y" ]]; then
-            log_success "Partition configuration confirmed"
-            return 0
+        if [[ "$confirm_partition" =~ ^[yY]([eE][sS])?$ ]]; then
+            break
         fi
     done
+    log_success "Partition configuration confirmed"
+    return 0
 }
 
 # Check available disk space
@@ -739,11 +741,11 @@ phase_1b_interactive_configuration() {
     log_info "════════════════════════════════════════════════════════════"
     echo ""
     
-    read -p "Proceed with installation? (type 'YES' to confirm): " final_confirm
+    read -p "Proceed with installation? (type 'y' to confirm): " final_confirm
     
-    if [[ "$final_confirm" != "YES" ]]; then
-        log_warn "Installation cancelled by user"
-        exit 0
+    if [[ ! "$final_confirm" =~ ^[yY]([eE][sS])?$ ]]; then
+        log_error "Installation cancelled by user"
+        exit 1
     fi
     
     # SAVE CONFIGURATION TO STATE FILE
