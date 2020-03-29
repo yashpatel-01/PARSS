@@ -1001,8 +1001,8 @@ phase_4_luks_encryption() {
     echo -n "$luks_passphrase" > "$temp_keyfile_root"
     chmod 600 "$temp_keyfile_root"
     
-    # LUKS format with keyfile
-    if ! cryptsetup luksFormat \
+    # LUKS format with keyfile (piping YES to bypass strict confirmation)
+    if ! echo "YES" | cryptsetup luksFormat \
         --type luks2 \
         --pbkdf argon2id \
         --pbkdf-force-iterations 4 \
@@ -1092,8 +1092,8 @@ phase_4_luks_encryption() {
     echo -n "$luks_passphrase" > "$temp_keyfile_home"
     chmod 600 "$temp_keyfile_home"
     
-    # LUKS format
-    if ! cryptsetup luksFormat \
+    # LUKS format (piping YES to bypass strict confirmation)
+    if ! echo "YES" | cryptsetup luksFormat \
         --type luks2 \
         --pbkdf argon2id \
         --pbkdf-force-iterations 4 \
