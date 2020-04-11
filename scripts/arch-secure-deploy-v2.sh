@@ -1238,12 +1238,7 @@ phase_5_btrfs_filesystem() {
     # ═══════════════════════════════════════════════════════════
     
     log_info "Creating mount point directories..."
-    mkdir -p "$MOUNT_ROOT"/{home,var,var/cache,.snapshots,boot}
-    
-    # Only create /var/log if @log subvolume is enabled
-    if [[ "$ADD_LOG_SUBVOLUME" == "true" ]]; then
-        mkdir -p "$MOUNT_ROOT/var/log"
-    fi
+    mkdir -p "$MOUNT_ROOT"/{home,var,.snapshots,boot}
     
     # Mount home (@home)
     log_info "Mounting @home subvolume..."
@@ -1264,6 +1259,12 @@ phase_5_btrfs_filesystem() {
         return 1
     fi
     log_success "@var subvolume mounted at $MOUNT_ROOT/var"
+    
+    # Create nested directories inside @var
+    mkdir -p "$MOUNT_ROOT/var/cache"
+    if [[ "$ADD_LOG_SUBVOLUME" == "true" ]]; then
+        mkdir -p "$MOUNT_ROOT/var/log"
+    fi
     
     # Mount varcache (@varcache)
     log_info "Mounting @varcache subvolume..."
