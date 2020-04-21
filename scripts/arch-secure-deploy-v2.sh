@@ -178,17 +178,22 @@ trap 'trap_error ${LINENO}' ERR
 # Cleanup function for error scenarios
 cleanup_on_error() {
     log_warn "Attempting emergency cleanup..."
-    
-    if [[ -b "$ROOT_CRYPT" ]]; then
-        cryptsetup close root_crypt 2>/dev/null || true
+
+    # Recursive unmount of target root
+    if [[ -n "${MOUNT_ROOT:-}" && -d "$MOUNT_ROOT" ]]; then
+        if mountpoint -q "$MOUNT_ROOT" 2>/dev/null; then
+            umount -R "$MOUNT_ROOT" 2>/dev/null || umount -l "$MOUNT_ROOT" 2>/dev/null || true
+        fi
     fi
-    
-    if [[ -b "/dev/mapper/home_crypt" ]]; then
-        cryptsetup close home_crypt 2>/dev/null || true
+
+    # Close LUKS devices using actual configured names
+    if [[ -n "${LUKS_ROOT_NAME:-}" && -b "/dev/mapper/${LUKS_ROOT_NAME}" ]]; then
+        cryptsetup close "$LUKS_ROOT_NAME" 2>/dev/null || true
     fi
-    
-    umount -l /mnt/root/* 2>/dev/null || true
-    umount -l /mnt/root 2>/dev/null || true
+
+    if [[ -n "${LUKS_HOME_NAME:-}" && -b "/dev/mapper/${LUKS_HOME_NAME}" ]]; then
+        cryptsetup close "$LUKS_HOME_NAME" 2>/dev/null || true
+    fi
 }
 
 # Logging functions
@@ -1012,7 +1017,7 @@ phase_4_luks_encryption() {
     if ! echo "YES" | cryptsetup luksFormat \
         --type luks2 \
         --pbkdf argon2id \
-        --pbkdf-force-iterations 4 \
+        --iter-time 5000 \
         --label "LUKS_ROOT" \
         --key-file "$temp_keyfile_root" \
         "$ROOT_PARTITION" 2>&1 | tee -a "$LOG_FILE"; then
@@ -1103,7 +1108,7 @@ phase_4_luks_encryption() {
     if ! echo "YES" | cryptsetup luksFormat \
         --type luks2 \
         --pbkdf argon2id \
-        --pbkdf-force-iterations 4 \
+        --iter-time 5000 \
         --label "LUKS_HOME" \
         --key-file "$temp_keyfile_home" \
         "$HOME_PARTITION" 2>&1 | tee -a "$LOG_FILE"; then
@@ -1224,7 +1229,7 @@ phase_5_btrfs_filesystem() {
     
     # Mount root (@) with security flags
     log_info "Mounting @ (root) subvolume..."
-    if ! mount -o "subvol=@,compress=zstd,noatime,space_cache=v2,nodev,nosuid,noexec" \
+    if ! mount -o "subvol='@',compress=zstd,noatime,space_cache=v2" \
         "$root_crypt_device" "$MOUNT_ROOT" >> "$LOG_FILE" 2>&1; then
         log_error "Failed to mount @ subvolume"
         log_error "Mount command: mount -o subvol=@,compress=zstd,... $root_crypt_device $MOUNT_ROOT"
