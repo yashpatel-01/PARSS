@@ -1103,7 +1103,7 @@ phase_4_luks_encryption() {
     if ! echo "YES" | cryptsetup luksFormat \
         --type luks2 \
         --pbkdf argon2id \
-        --iter-time 5000 \
+        --pbkdf-force-iterations 4 \
         --label "LUKS_ROOT" \
         --key-file "$temp_keyfile_root" \
         "$ROOT_PARTITION" 2>&1 | tee -a "$LOG_FILE"; then
@@ -1194,7 +1194,7 @@ phase_4_luks_encryption() {
     if ! echo "YES" | cryptsetup luksFormat \
         --type luks2 \
         --pbkdf argon2id \
-        --iter-time 5000 \
+        --pbkdf-force-iterations 4 \
         --label "LUKS_HOME" \
         --key-file "$temp_keyfile_home" \
         "$HOME_PARTITION" 2>&1 | tee -a "$LOG_FILE"; then
