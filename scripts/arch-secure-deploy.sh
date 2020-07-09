@@ -1275,7 +1275,25 @@ phase_4_luks_encryption() {
     log_info "  Root: $ROOT_PARTITION → /dev/mapper/$LUKS_ROOT_NAME"
     log_info "  Home: $HOME_PARTITION → /dev/mapper/$LUKS_HOME_NAME"
     log_info "  Single passphrase: ✓"
-    
+
+    # ═══════════════════════════════════════════════════════════
+    # LUKS PASSPHRASE SELF-TEST (INTERACTIVE)
+    # Verify that the passphrase you will use at boot actually
+    # unlocks the root LUKS header. This prevents completing an
+    # installation with an unusable passphrase.
+    # ═══════════════════════════════════════════════════════════
+
+    log_info "Running LUKS passphrase self-test for $ROOT_PARTITION..."
+    log_info "Type the SAME passphrase you intend to use at boot."
+
+    if ! cryptsetup --verbose open --test-passphrase "$ROOT_PARTITION" 2>&1 | tee -a "$LOG_FILE"; then
+        log_error "LUKS self-test failed: the passphrase you entered does NOT unlock $ROOT_PARTITION."
+        log_error "Installation aborted to prevent an unbootable system. Please rerun and choose/passphrase carefully."
+        return 1
+    fi
+
+    log_success "LUKS passphrase self-test successful for $ROOT_PARTITION"
+
     save_state "ROOT_CRYPT_OPENED" "true"
     save_state "HOME_ENCRYPTED" "true"
     log_success "Phase 4 completed successfully"
