@@ -4,7 +4,7 @@ set -euo pipefail
 # System Health Check Dashboard
 # Usage: ./system-health.sh
 
-echo "=== PAASS System Health ==="
+echo "=== PARSS System Health ==="
 echo "Date: $(date)"
 echo "Hostname: $(hostname)"
 echo ""

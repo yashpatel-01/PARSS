@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# PAASS BTRFS Dashboard
+# PARSS BTRFS Dashboard
 # Quick overview of encrypted BTRFS layout, usage, and snapshots.
 
-echo "=== PAASS BTRFS Dashboard ==="
+echo "=== PARSS BTRFS Dashboard ==="
 echo "Host: $(hostname)"
 echo "Date: $(date)"
 echo ""

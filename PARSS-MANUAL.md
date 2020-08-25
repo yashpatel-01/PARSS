@@ -1,11 +1,11 @@
-# PAASS Post-Install Manual
+# PARSS Post-Install Manual
 
 This manual is a single, indexed reference that combines the key content from:
 
 - `INSTALLATION.md`
 - `MAINTENANCE.md`
 - `RECOVERY.md`
-- the PAASS deployment scripts (health checks, integrity checks)
+- the PARSS deployment scripts (health checks, integrity checks)
 
 Use it after a successful installation as your F1-style help page.
 
@@ -28,16 +28,16 @@ After the installer finishes and you reboot:
    sudo pacman -Syu
    ```
 
-4. **Clone PAASS repo on the installed system (for scripts & docs)**
+4. **Clone PARSS repo on the installed system (for scripts & docs)**
    ```bash
    cd ~
-   git clone https://github.com/yashpatel-01/PAASS.git
-   cd PAASS
+   git clone https://github.com/yashpatel-01/PARSS.git
+   cd PARSS
    ```
 
 5. **Run the system health dashboard**
    ```bash
-   cd ~/PAASS/scripts
+   cd ~/PARSS/scripts
    chmod +x system-health.sh integrity-check.sh
    ./system-health.sh
    ```
@@ -64,17 +64,19 @@ If any checks fail, see the Recovery and Maintenance sections below.
 
 1. **Boot Arch ISO**.
 2. **Connect to the internet** (Ethernet auto-DHCP, or Wi-Fi via `iwctl`).
-3. **Clone PAASS repo inside the ISO environment**:
+3. **Clone PARSS repo inside the ISO environment**:
    ```bash
    pacman -Sy git
-   git clone https://github.com/yashpatel-01/PAASS.git
-   cd PAASS/scripts
+   git clone https://github.com/yashpatel-01/PARSS.git
+   cd PARSS/scripts
    ```
-4. **Run the deployment script** (current production script):
+
+4. **Run the deployment script**:
    ```bash
    chmod +x arch-secure-deploy.sh
    ./arch-secure-deploy.sh
    ```
+
 5. **Answer interactive prompts** for hostname, user, encryption mapping names, partition sizes, etc.
 6. **Confirm destructive operation**.
 7. **Enter and confirm the single LUKS passphrase**.
@@ -111,7 +113,7 @@ If any checks fail, see the Recovery and Maintenance sections below.
 
 - **Integrity check (AIDE):**
   ```bash
-  cd ~/PAASS/scripts
+  cd ~/PARSS/scripts
   ./integrity-check.sh
   ```
 
@@ -195,7 +197,7 @@ After repairs, exit the chroot, unmount, close LUKS, remove the ISO, and reboot.
 From the installed system:
 
 ```bash
-cd ~/PAASS/scripts
+cd ~/PARSS/scripts
 ./system-health.sh
 ```
 
@@ -213,7 +215,7 @@ This reports:
 ### 5.2 Run integrity-check (AIDE)
 
 ```bash
-cd ~/PAASS/scripts
+cd ~/PARSS/scripts
 ./integrity-check.sh
 ```
 
@@ -224,15 +226,15 @@ cd ~/PAASS/scripts
 
 ## 6. F1-Style Help Usage (Planned)
 
-Currently, this `PAASS-MANUAL.md` lives in the PAASS repo root. A future step
+Currently, this `PARSS-MANUAL.md` lives in the PARSS repo root. A future step
 will bind the F1 key (or another shortcut) in your window manager to open this
 manual in a pager or terminal editor (e.g. `less`, `nvim`).
 
 For now, you can open it manually after login:
 
 ```bash
-cd ~/PAASS
-less PAASS-MANUAL.md
+cd ~/PARSS
+less PARSS-MANUAL.md
 ```
 
 Or with a GUI editor if installed.
@@ -241,11 +243,13 @@ Or with a GUI editor if installed.
 
 ## 7. Where to Go Next
 
-- For **install details**, see `INSTALLATION.md`.
-- For **ongoing maintenance**, see `MAINTENANCE.md`.
-- For **emergencies**, see `RECOVERY.md`.
+- For **install details and phase overview**, see Sections 2 and 5 of this
+  manual.
+- For **ongoing maintenance**, see Section 3.
+- For **emergencies and recovery**, see Section 4.
 - For **runtime verification**, use `scripts/system-health.sh` and
   `scripts/integrity-check.sh`.
+- For a high-level project overview and quickstart, see `README.md`.
 
 This manual is designed to be your single, indexed reference after the first
-boot, mirroring the spirit of LARBS’ F1 help page while being tailored to PAASS.
+boot, mirroring the spirit of earlier F1-style help pages while being tailored to PARSS.

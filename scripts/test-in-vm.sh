@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Test PAASS deployment in a simulated environment
+# Test PARSS deployment in a simulated environment
 # Usage: ./test-in-vm.sh [vm-name]
 
-VM_NAME="${1:-paass-test-vm}"
+VM_NAME="${1:-parss-test-vm}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEPLOY_SCRIPT="$SCRIPT_DIR/arch-secure-deploy-v2.sh"
+DEPLOY_SCRIPT="$SCRIPT_DIR/arch-secure-deploy.sh"
 
-echo "Starting Test Suite for PAASS..."
+echo "Starting Test Suite for PARSS..."
 echo "Target VM: $VM_NAME"
 
 # 1. Syntax Check

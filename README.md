@@ -1,72 +1,155 @@
-# Luke's Auto-Rice Bootstrapping Scripts (LARBS)
+# PARSS: Patel's Arch Rice Setup & Security
 
-## Installation:
+PARSS is an Arch Linux deployment toolkit that automates a **fully encrypted**, **BTRFS-based**, and **hardened** system install. It takes inspiration from LARBS, but focuses on:
 
-On an Arch-based distribution as root, run the following:
+- **Secure-by-default disk layout** (LUKS2 + BTRFS subvolumes)
+- **Repeatable installs** with clear logging and state
+- **Post-install health checks** and integrity tooling
+- An **optional suckless/archrice desktop layer** you can apply after first boot
 
+This repo currently contains a primary installer plus supporting tools and docs.
+
+---
+
+## 1. Components
+
+- **Installer**
+  - `scripts/arch-secure-deploy.sh` — stable, battle-tested installer.
+- **Post-install tools**
+  - `scripts/system-health.sh` — service, crypto, and BTRFS health dashboard.
+  - `scripts/integrity-check.sh` — AIDE-based filesystem integrity checks.
+  - `scripts/btrfs-dashboard.sh` — quick BTRFS layout/usage overview.
+  - `scripts/desktop-setup.sh` — **optional** desktop/dotfiles setup using your `archrice` repo and an optional `progs.csv`.
+- **Docs**
+  - `PARSS-MANUAL.md` — single F1-style manual (install recap, maintenance, recovery, health checks).
+  - `PARSS-CHANGES.md` — changelog / design history.
+
+---
+
+## 2. Quickstart Install (from Arch ISO)
+
+1. **Boot the Arch ISO** (UEFI, x86_64).
+2. **Connect to the network** (examples):
+   ```bash
+   iwctl          # Wi-Fi
+   # or
+   dhcpcd         # Ethernet
+   ```
+3. **Clone PARSS inside the ISO environment**:
+   ```bash
+   pacman -Sy git
+   git clone https://github.com/yashpatel-01/PARSS.git
+   cd PARSS/scripts
+   ```
+4. **Run the installer**:
+   ```bash
+   chmod +x arch-secure-deploy.sh
+   ./arch-secure-deploy.sh
+   ```
+
+5. **Follow the prompts** for:
+   - Hostname, primary user, encryption mapping names.
+   - Disk/partition selection (this will **wipe** the chosen disk).
+   - Single LUKS passphrase (used for both root and home).
+
+6. Let all phases complete, then:
+   ```bash
+   reboot
+   ```
+
+7. At boot, enter your **single LUKS passphrase**, then log in as your primary user.
+
+For a more detailed step-by-step description of the phases and expectations, see **Section 2** of `PARSS-MANUAL.md`.
+
+---
+
+## 3. Optional Desktop & archrice Dotfiles
+
+PARSS does **not** force a desktop environment during base install. Instead, after first boot you can layer on your desktop and dotfiles via `archrice` and an optional CSV package list.
+
+On the **installed system**, as your primary user:
+
+```bash
+cd ~
+git clone https://github.com/yashpatel-01/PARSS.git
+cd PARSS/scripts
+chmod +x desktop-setup.sh
+./desktop-setup.sh
 ```
-curl -LO larbs.xyz/larbs.sh
-sh larbs.sh
-```
 
-That's it.
+`desktop-setup.sh` will:
 
-## What is LARBS?
+- Clone or update your **archrice** dotfiles repo (defaults to
+  `https://github.com/yashpatel-01/archrice.git`).
+- If `progs.csv` exists in that repo, read it and:
+  - Install regular packages via `pacman`.
+  - Optionally install AUR packages (tag `A`) using `$AUR_HELPER` (default `yay`).
+  - Optionally build `git` sources (tag `G`) via `make && sudo make install`.
+- Sync archrice files into `$HOME` (using `rsync` if available).
 
-LARBS is a script that autoinstalls and autoconfigures a fully-functioning
-and minimal terminal-and-vim-based Arch Linux environment.
+This gives you a **PARSS-style rice layer** (dwm/st/dmenu/slstatus, lf, neomutt, etc.) but sourced from your **own** archrice repo instead of Luke's voidrice.
 
-LARBS can be run on a fresh install of Arch or Artix Linux, and provides you
-with a fully configured diving-board for work or more customization.
+You can customize behavior with environment variables:
 
-## Customization
+- `DOTFILES_REPO` — override the archrice repo URL.
+- `DOTFILES_DIR` — local clone path (defaults to `$HOME/.local/src/archrice`).
+- `PROGS_FILE` — explicit path to a CSV file (defaults to `$DOTFILES_DIR/progs.csv`).
+- `AUR_HELPER` — AUR helper command (default: `yay`).
 
-By default, LARBS uses the programs [here in progs.csv](static/progs.csv) and installs
-[my dotfiles repo (voidrice) here](https://github.com/lukesmithxyz/voidrice),
-but you can easily change this by either modifying the default variables at the
-beginning of the script or giving the script one of these options:
+If no CSV is present, the script will **only deploy dotfiles**, not packages.
 
-- `-r`: custom dotfiles repository (URL)
-- `-p`: custom programs list/dependencies (local file or URL)
-- `-a`: a custom AUR helper (must be able to install with `-S` unless you
-  change the relevant line in the script
+---
 
-### The `progs.csv` list
+## 4. Post-Install Health & Integrity
 
-LARBS will parse the given programs list and install all given programs. Note
-that the programs file must be a three column `.csv`.
+From the installed system:
 
-The first column is a "tag" that determines how the program is installed, ""
-(blank) for the main repository, `A` for via the AUR or `G` if the program is a
-git repository that is meant to be `make && sudo make install`ed.
+- **System health dashboard**
+  ```bash
+  cd ~/PARSS/scripts
+  ./system-health.sh
+  ```
+  Shows service status (NetworkManager, AppArmor, nftables, snapshot timer),
+  LUKS/crypttab/GRUB configuration, and BTRFS subvolume layout.
 
-The second column is the name of the program in the repository, or the link to
-the git repository, and the third column is a description (should be a verb
-phrase) that describes the program. During installation, LARBS will print out
-this information in a grammatical sentence. It also doubles as documentation
-for people who read the CSV and want to install my dotfiles manually.
+- **Filesystem integrity (AIDE)**
+  ```bash
+  cd ~/PARSS/scripts
+  ./integrity-check.sh
+  ```
+  Initializes AIDE if needed, then performs integrity checks on later runs.
 
-Depending on your own build, you may want to tactically order the programs in
-your programs file. LARBS will install from the top to the bottom.
+- **BTRFS usage dashboard**
+  ```bash
+  cd ~/PARSS/scripts
+  ./btrfs-dashboard.sh
+  ```
+  Summarizes devices, usage, subvolumes, snapshots, and mounts.
 
-If you include commas in your program descriptions, be sure to include double
-quotes around the whole description to ensure correct parsing.
+See `PARSS-MANUAL.md` for maintenance cadence (weekly/monthly/quarterly) and
+recovery procedures.
 
-### The script itself
+---
 
-The script is extensively divided into functions for easier readability and
-trouble-shooting. Most everything should be self-explanatory.
+## 5. Documentation Layout
 
-The main work is done by the `installationloop` function, which iterates
-through the programs file and determines based on the tag of each program,
-which commands to run to install it. You can easily add new methods of
-installations and tags as well.
+To avoid duplicated information, PARSS intentionally keeps docs minimal:
 
-Note that programs from the AUR can only be built by a non-root user. What
-LARBS does to bypass this by default is to temporarily allow the newly created
-user to use `sudo` without a password (so the user won't be prompted for a
-password multiple times in installation). This is done ad-hocly, but
-effectively with the `newperms` function. At the end of installation,
-`newperms` removes those settings, giving the user the ability to run only
-several basic sudo commands without a password (`shutdown`, `reboot`,
-`pacman -Syu`).
+- **`README.md`** — what this repo is, quickstart usage, and an overview of
+  installers and tools.
+- **`PARSS-MANUAL.md`** — single, indexed manual combining the previous
+  INSTALLATION / MAINTENANCE / RECOVERY docs.
+- **`PARSS-CHANGES.md`** — changelog and design history.
+
+Older standalone guides have been merged into `PARSS-MANUAL.md` and removed.
+
+---
+
+## 6. Licensing and Attribution
+
+PARSS builds on ideas and code structure from:
+
+- **LARBS** and **voidrice** by Luke Smith.
+- Your customized **archrice** dotfiles.
+
+The installer scripts are licensed under **GPL-3.0** (see `LICENSE`).

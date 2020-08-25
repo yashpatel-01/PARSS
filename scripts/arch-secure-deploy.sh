@@ -17,9 +17,9 @@
 #   ✓ Comprehensive error recovery (15+ scenarios)
 #   ✓ Security hardening (kernel params, sysctl tuning)
 #   ✓ BTRFS automatic snapshot automation (weekly)
-#   ✓ CSV-driven package installation (pacman/AUR/git)
-#   ✓ Automatic voidrice deployment (LARBS identical)
-#   ✓ Suckless window manager stack (dwm, st, dmenu, slstatus)
+#   ✓ (Planned) CSV-driven package installation (pacman/AUR/git)
+#   ✓ (Planned) Automatic archrice/PARSS dotfiles deployment
+#   ✓ (Planned) Suckless window manager stack (dwm, st, dmenu, slstatus)
 #   ✓ Network resilience with retry logic
 #   ✓ Extensive logging and state tracking
 #   ✓ Disaster recovery mechanisms
@@ -76,7 +76,7 @@ trap 'echo "[ERROR] \"${last_command}\" command failed with exit code $? at line
 #
 # Usage: sudo bash ./arch-secure-deploy-production-FINAL.sh
 #
-# Version: 2.4 (PAASS Enhanced - Reliability & Security Pillars)
+# Version: 2.4 (PARSS Enhanced - Reliability & Security Pillars)
 #
 # Bug Fixes in v2.3:
 #   ✓ Fixed partition creation alignment issues

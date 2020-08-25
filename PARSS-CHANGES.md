@@ -1,4 +1,4 @@
-# PAASS Change Log
+# PARSS Change Log
 
 ## [v2.4] - 2025-11-26
 ### Added
