@@ -127,6 +127,7 @@ declare MOUNT_ROOT="/mnt/root"
 declare ROOT_SIZE_GB=50
 declare HOME_SIZE_GB=0
 declare AVAILABLE_SPACE_GB=0
+declare HOME_LUKS_KEYFILE_TEMP=""
 
 # === INTERACTIVE CONFIGURATION VARIABLES ===
 declare HOSTNAME_SYS="devta"
@@ -1274,6 +1275,28 @@ phase_4_luks_encryption() {
     
     log_success "Home partition encrypted and opened with SAME passphrase"
     
+    # Configure a secondary LUKS keyslot for home using a keyfile so that
+    # home can be unlocked automatically after root is unlocked at boot.
+    HOME_LUKS_KEYFILE_TEMP="/tmp/parss-home-luks-key-$$"
+    log_info "Generating LUKS keyfile for automatic home unlock..."
+    if dd if=/dev/urandom of="$HOME_LUKS_KEYFILE_TEMP" bs=4096 count=1 status=none 2>>"$LOG_FILE"; then
+        chmod 600 "$HOME_LUKS_KEYFILE_TEMP" 2>>"$LOG_FILE" || true
+        # Add the new keyfile as an additional keyslot, authenticating with the
+        # existing passphrase held in memory (not logged).
+        if printf '%s' "$luks_passphrase" | \
+            cryptsetup luksAddKey "$HOME_PARTITION" "$HOME_LUKS_KEYFILE_TEMP" --key-file - 2>>"$LOG_FILE"; then
+            log_success "Added keyfile-based LUKS keyslot for home partition"
+        else
+            log_warn "Failed to add keyfile-based LUKS keyslot for home; home will require a passphrase at boot."
+            shred -vfz -n 3 "$HOME_LUKS_KEYFILE_TEMP" 2>/dev/null || rm -f "$HOME_LUKS_KEYFILE_TEMP"
+            HOME_LUKS_KEYFILE_TEMP=""
+        fi
+    else
+        log_warn "Failed to generate home LUKS keyfile; home will require a passphrase at boot."
+        shred -vfz -n 3 "$HOME_LUKS_KEYFILE_TEMP" 2>/dev/null || rm -f "$HOME_LUKS_KEYFILE_TEMP"
+        HOME_LUKS_KEYFILE_TEMP=""
+    fi
+    
     # ═══════════════════════════════════════════════════════════
     # FINAL VERIFICATION
     # ═══════════════════════════════════════════════════════════
@@ -1490,9 +1513,9 @@ phase_6_base_installation() {
     log_info "Available space for installation: ${free_gb}GB"
     
     local packages=(
-        "base" "linux-zen" "linux-zen-headers"
+        "base" "linux-zen" "linux-zen-headers" "linux-lts" "linux-lts-headers"
         "mkinitcpio"
-        "grub" "efibootmgr"
+        "grub" "efibootmgr" "os-prober" "ntfs-3g"
         "btrfs-progs"
         "cryptsetup"
         "networkmanager"
@@ -1546,12 +1569,34 @@ phase_7_mount_configuration() {
     local home_partuuid
     home_partuuid=$(blkid -s PARTUUID -o value "$HOME_PARTITION")
     
+    # If a temporary keyfile for home was created in Phase 4, persist it into
+    # the target root filesystem and reference it from crypttab so that the
+    # home volume can be unlocked automatically after root is mounted.
+    local crypttab_home_key_field="none"
+    local home_keyfile_dest_path="/root/.luks-keyfile-home"
+    if [[ -n "${HOME_LUKS_KEYFILE_TEMP:-}" && -f "$HOME_LUKS_KEYFILE_TEMP" ]]; then
+        local home_keyfile_dest="$MOUNT_ROOT$home_keyfile_dest_path"
+        log_info "Persisting home LUKS keyfile to $home_keyfile_dest"
+        if install -m 0400 "$HOME_LUKS_KEYFILE_TEMP" "$home_keyfile_dest" 2>>"$LOG_FILE"; then
+            shred -vfz -n 3 "$HOME_LUKS_KEYFILE_TEMP" 2>/dev/null || rm -f "$HOME_LUKS_KEYFILE_TEMP"
+            HOME_LUKS_KEYFILE_TEMP=""
+            crypttab_home_key_field="$home_keyfile_dest_path"
+            log_success "Home LUKS keyfile persisted inside encrypted root filesystem"
+        else
+            log_warn "Failed to persist home LUKS keyfile; falling back to interactive passphrase for home at boot."
+            shred -vfz -n 3 "$HOME_LUKS_KEYFILE_TEMP" 2>/dev/null || rm -f "$HOME_LUKS_KEYFILE_TEMP"
+            HOME_LUKS_KEYFILE_TEMP=""
+        fi
+    else
+        log_info "No temporary home LUKS keyfile present; home will prompt for a passphrase at boot."
+    fi
+
     cat > "$MOUNT_ROOT/etc/crypttab" << EOF
 $LUKS_ROOT_NAME	PARTUUID=$root_partuuid	none	luks,x-systemd.device-timeout=10
-$LUKS_HOME_NAME	PARTUUID=$home_partuuid	none	luks,x-systemd.device-timeout=10
+$LUKS_HOME_NAME	PARTUUID=$home_partuuid	$crypttab_home_key_field	luks,x-systemd.device-timeout=10
 EOF
     
-    log_info "crypttab configuration (both encrypted with SAME passphrase):"
+    log_info "crypttab configuration (single passphrase for root; home uses keyfile when available):"
     cat "$MOUNT_ROOT/etc/crypttab" | tee -a "$LOG_FILE"
     
     save_state "FSTAB_GENERATED" "true"
@@ -1583,13 +1628,13 @@ phase_8_chroot_configuration() {
     grep -E "^(MODULES|HOOKS)" "$mkinitcpio_conf" | tee -a "$LOG_FILE"
     
     # ═══════════════════════════════════════════════════════════
-    # GENERATE INITRAMFS (FIXED - Handle bash not found)
+    # GENERATE INITRAMFS FOR ALL INSTALLED KERNELS
     # ═══════════════════════════════════════════════════════════
     
-    log_info "Generating initramfs (mkinitcpio -p linux-zen)..."
+    log_info "Generating initramfs for all installed kernels (mkinitcpio -P)..."
     
     # METHOD 1: Try arch-chroot (recommended, handles environment setup)
-    if arch-chroot "$MOUNT_ROOT" mkinitcpio -p linux-zen 2>&1 | tee -a "$LOG_FILE"; then
+    if arch-chroot "$MOUNT_ROOT" mkinitcpio -P 2>&1 | tee -a "$LOG_FILE"; then
         log_success "Initramfs generated via arch-chroot"
     else
         local arch_chroot_exit=$?
@@ -1598,7 +1643,7 @@ phase_8_chroot_configuration() {
         
         # METHOD 2: Fallback - use chroot directly with /bin/sh
         # This avoids the bash permission issue
-        if chroot "$MOUNT_ROOT" /bin/sh -c "mkinitcpio -p linux-zen" 2>&1 | tee -a "$LOG_FILE"; then
+        if chroot "$MOUNT_ROOT" /bin/sh -c "mkinitcpio -P" 2>&1 | tee -a "$LOG_FILE"; then
             log_success "Initramfs generated via chroot /bin/sh"
         else
             local chroot_exit=$?
@@ -1609,7 +1654,7 @@ phase_8_chroot_configuration() {
     fi
     
     # ═══════════════════════════════════════════════════════════
-    # VERIFY INITRAMFS WAS CREATED
+    # VERIFY INITRAMFS FOR PRIMARY KERNEL (linux-zen)
     # ═══════════════════════════════════════════════════════════
     
     if [[ ! -f "$MOUNT_ROOT/boot/initramfs-linux-zen.img" ]]; then
@@ -1622,7 +1667,7 @@ phase_8_chroot_configuration() {
     
     local initramfs_size
     initramfs_size=$(stat -c%s "$MOUNT_ROOT/boot/initramfs-linux-zen.img")
-    log_success "Initramfs file verified (size: ${initramfs_size} bytes)"
+    log_success "Initramfs file for linux-zen verified (size: ${initramfs_size} bytes)"
     
     # ═══════════════════════════════════════════════════════════
     # INSTALL GRUB BOOTLOADER
@@ -1678,9 +1723,23 @@ phase_8_chroot_configuration() {
     
     # Enable cryptodisk support in GRUB
     echo "GRUB_ENABLE_CRYPTODISK=y" >> "$grub_default"
+
+    # Ensure GRUB uses 'devarch' as the distributor name (menu entry label)
+    if grep -q 'GRUB_DISTRIBUTOR=' "$grub_default"; then
+        sed -i 's/^#\?GRUB_DISTRIBUTOR=.*/GRUB_DISTRIBUTOR="devarch"/' "$grub_default"
+    else
+        echo 'GRUB_DISTRIBUTOR="devarch"' >> "$grub_default"
+    fi
+
+    # Enable os-prober so GRUB detects Windows/other OSes
+    if grep -q 'GRUB_DISABLE_OS_PROBER=' "$grub_default"; then
+        sed -i 's/^#\?GRUB_DISABLE_OS_PROBER=.*/GRUB_DISABLE_OS_PROBER=false/' "$grub_default"
+    else
+        echo 'GRUB_DISABLE_OS_PROBER=false' >> "$grub_default"
+    fi
     
     log_info "Updated GRUB configuration:"
-    grep -E "^(GRUB_CMDLINE_LINUX|GRUB_ENABLE_CRYPTODISK)" "$grub_default" | tee -a "$LOG_FILE"
+    grep -E "^(GRUB_CMDLINE_LINUX|GRUB_ENABLE_CRYPTODISK|GRUB_DISTRIBUTOR|GRUB_DISABLE_OS_PROBER)" "$grub_default" | tee -a "$LOG_FILE"
     
     # ═══════════════════════════════════════════════════════════
     # GENERATE GRUB CONFIGURATION
