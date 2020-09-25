@@ -1830,10 +1830,43 @@ phase_10_user_setup() {
     fi
     
     log_info "Setting password for $PRIMARY_USER..."
-    arch-chroot "$MOUNT_ROOT" bash -c "passwd $PRIMARY_USER"
+    local user_password
+    while true; do
+        read -sp "Enter password for user $PRIMARY_USER: " user_password
+        echo
+        local user_password_confirm
+        read -sp "Confirm password: " user_password_confirm
+        echo
+        if [[ "$user_password" == "$user_password_confirm" ]]; then
+            break
+        else
+            log_warn "Passwords do not match. Try again."
+        fi
+    done
+    
+    echo "$PRIMARY_USER:$user_password" | arch-chroot "$MOUNT_ROOT" chpasswd
+    log_success "Password set for $PRIMARY_USER"
     
     log_info "Setting root password..."
-    arch-chroot "$MOUNT_ROOT" bash -c "passwd root"
+    local root_password
+    while true; do
+        read -sp "Enter password for root: " root_password
+        echo
+        local root_password_confirm
+        read -sp "Confirm password: " root_password_confirm
+        echo
+        if [[ "$root_password" == "$root_password_confirm" ]]; then
+            break
+        else
+            log_warn "Passwords do not match. Try again."
+        fi
+    done
+    
+    echo "root:$root_password" | arch-chroot "$MOUNT_ROOT" chpasswd
+    log_success "Root password set successfully"
+    
+    # Clear password variables from memory
+    unset user_password user_password_confirm root_password root_password_confirm
     
     log_info "Verifying sudo configuration for $PRIMARY_USER..."
     
