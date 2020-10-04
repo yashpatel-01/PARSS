@@ -61,12 +61,11 @@ trap 'last_command=$current_command; current_command=$BASH_COMMAND' DEBUG
 trap 'echo "[ERROR] \"${last_command}\" command failed with exit code $? at line $LINENO"' ERR
 
 # Changes in v2.2:
-#   ✓ Root partition: 50GB minimum/default (was 180GB)
-#   ✓ Home partition: 20GB minimum (was no minimum)
+#   ✓ Root partition: Single BTRFS partition with all subvolumes (was split root+home)
 #   ✓ Default hostname: devta (was archlinux)
 #   ✓ Default username: patel (was empty)
 #   ✓ Default BTRFS names: root/home/snapshots (was arch_root/arch_home/arch_snapshots)
-#   ✓ Default LUKS names: yumraj/yumdut (was crypt_root/crypt_home)
+#   ✓ Default LUKS name: mahadev (was yumraj, single partition only)
 #   ✓ Default log subvolume: yes (was yes)
 #   ✓ Default NVIDIA: yes (was yes)
 #   ✓ Default snapshot retention: 12 (was 8)
@@ -89,15 +88,14 @@ trap 'echo "[ERROR] \"${last_command}\" command failed with exit code $? at line
 #   ✓ Fixed cryptsetup passphrase input handling
 #
 # Previous features (v2.2):
-#   ✓ Root partition: 50GB minimum/default
-#   ✓ Home partition: 20GB minimum
+#   ✓ Root partition: Single BTRFS partition with all subvolumes
 #   ✓ Default hostname: devta
 #   ✓ Default username: patel
 #   ✓ Default BTRFS names: root/home/snapshots
-#   ✓ Default LUKS names: yumraj/yumdut
+#   ✓ Default LUKS name: mahadev
 #   ✓ Default snapshot retention: 12
 #   ✓ Menu-based device selection
-#   ✓ Single LUKS passphrase for both partitions
+#   ✓ Single-partition BTRFS layout (all subvolumes on one encrypted partition)
 #
 ################################################################################
 
@@ -121,13 +119,9 @@ readonly STATE_FILE="/tmp/arch-deploy-state-$$.env"
 declare TARGET_DEVICE=""
 declare BOOT_PARTITION=""
 declare ROOT_PARTITION=""
-declare HOME_PARTITION=""
 declare ROOT_CRYPT="/dev/mapper/root_crypt"
 declare MOUNT_ROOT="/mnt/root"
-declare ROOT_SIZE_GB=50
-declare HOME_SIZE_GB=0
 declare AVAILABLE_SPACE_GB=0
-declare HOME_LUKS_KEYFILE_TEMP=""
 
 # === INTERACTIVE CONFIGURATION VARIABLES ===
 declare HOSTNAME_SYS="devta"
@@ -135,8 +129,7 @@ declare PRIMARY_USER="patel"
 declare BTRFS_ROOT_VOL="root"
 declare BTRFS_HOME_VOL="home"
 declare BTRFS_SNAP_VOL="snapshots"
-declare LUKS_ROOT_NAME="yumraj"
-declare LUKS_HOME_NAME="yumdut"
+declare LUKS_ROOT_NAME="mahadev"
 declare ADD_LOG_SUBVOLUME="true"
 declare ENABLE_NVIDIA_GPU="true"
 declare SNAPSHOT_RETENTION=12
@@ -190,10 +183,6 @@ cleanup_on_error() {
     # Close LUKS devices using actual configured names
     if [[ -n "${LUKS_ROOT_NAME:-}" && -b "/dev/mapper/${LUKS_ROOT_NAME}" ]]; then
         cryptsetup close "$LUKS_ROOT_NAME" 2>/dev/null || true
-    fi
-
-    if [[ -n "${LUKS_HOME_NAME:-}" && -b "/dev/mapper/${LUKS_HOME_NAME}" ]]; then
-        cryptsetup close "$LUKS_HOME_NAME" 2>/dev/null || true
     fi
 }
 
@@ -464,7 +453,7 @@ prompt_luks_passphrase() {
     echo ""
     echo -e "${YELLOW}⚠️  You will need this passphrase to boot your system every time${NC}"
     echo -e "${YELLOW}⚠️  Write it down and store it in a secure location${NC}"
-    echo -e "${YELLOW}⚠️  This SINGLE passphrase will unlock BOTH root and home partitions${NC}"
+    echo -e "${YELLOW}⚠️  This passphrase will unlock the encrypted root partition (containing all BTRFS subvolumes)${NC}"
     echo ""
     
     local passphrase=""
@@ -512,47 +501,31 @@ prompt_partition_size() {
     echo ""
     echo "Configuration:"
     echo "  1. EFI System Partition: 1GB (FAT32)"
-    echo "  2. Root partition (@): Customizable (default: 50GB)"
-    echo "  3. Home partition (@home): Remainder of disk"
+    echo "  2. Root partition with BTRFS subvolumes (@, @home, @var, @snapshots, etc.): All remaining space"
+    echo ""
+    echo "BTRFS subvolumes will be created on the root partition:"
+    echo "  - @ (root filesystem)"
+    echo "  - @home (user home directories)"
+    echo "  - @var (variable data)"
+    echo "  - @snapshots (BTRFS snapshots)"
+    echo "  - @varcache (package cache)"
+    echo "  - @log (system logs)"
     echo ""
     
-    while true; do
-        read -p "Enter root partition size in GB [50]: " root_input
-        root_input="${root_input:-50}"
-        
-        if ! [[ "$root_input" =~ ^[0-9]+$ ]]; then
-            log_warn "Invalid input. Please enter a number."
-            continue
-        fi
-        
-        ROOT_SIZE_GB=$root_input
-        HOME_SIZE_GB=$((AVAILABLE_SPACE_GB - 1 - ROOT_SIZE_GB))
-        
-        if [[ $ROOT_SIZE_GB -lt 50 ]]; then
-            log_warn "Root partition must be at least 50GB"
-            continue
-        fi
-        
-        if [[ $HOME_SIZE_GB -lt 20 ]]; then
-            log_warn "Home partition must be at least 20GB (${HOME_SIZE_GB}GB remaining)"
-            continue
-        fi
-        
-        echo ""
-        echo -e "${GREEN}Partition Layout:${NC}"
-        echo "  EFI System Partition: 1GB"
-        echo "  Root partition (@):   ${ROOT_SIZE_GB}GB"
-        echo "  Home partition (@home): ${HOME_SIZE_GB}GB"
-        echo "  Total:                $((1 + ROOT_SIZE_GB + HOME_SIZE_GB))GB"
-        echo ""
-        
-        read -p "Is this configuration correct? (y/n) [y]: " confirm_partition
-        confirm_partition=${confirm_partition:-y}
-        
-        if [[ "$confirm_partition" =~ ^[yY]([eE][sS])?$ ]]; then
-            break
-        fi
-    done
+    echo -e "${GREEN}Partition Layout:${NC}"
+    echo "  EFI System Partition: 1GB"
+    echo "  Root partition:       $((AVAILABLE_SPACE_GB - 1))GB (all BTRFS subvolumes)"
+    echo "  Total:                ${AVAILABLE_SPACE_GB}GB"
+    echo ""
+    
+    read -p "Proceed with this configuration? (y/n) [y]: " confirm_partition
+    confirm_partition=${confirm_partition:-y}
+    
+    if [[ ! "$confirm_partition" =~ ^[yY]([eE][sS])?$ ]]; then
+        log_error "Installation cancelled by user"
+        return 1
+    fi
+    
     log_success "Partition configuration confirmed"
     return 0
 }
@@ -566,8 +539,8 @@ check_disk_space() {
     
     log_info "Available disk space: ${AVAILABLE_SPACE_GB}GB"
     
-    if [[ $AVAILABLE_SPACE_GB -lt 71 ]]; then
-        log_error "Insufficient disk space. Minimum required: 71GB (1GB EFI + 50GB root + 20GB home), Available: ${AVAILABLE_SPACE_GB}GB"
+    if [[ $AVAILABLE_SPACE_GB -lt 51 ]]; then
+        log_error "Insufficient disk space. Minimum required: 51GB (1GB EFI + 50GB root), Available: ${AVAILABLE_SPACE_GB}GB"
         return 1
     fi
     
@@ -679,17 +652,9 @@ phase_1b_interactive_configuration() {
     
     log_success "BTRFS root volume: $BTRFS_ROOT_VOL"
     
-    log_info "BTRFS home logical volume name"
-    echo "This labels your encrypted home partition"
-    read -p "BTRFS home volume [home]: " input_home_vol
-    BTRFS_HOME_VOL="${input_home_vol:-home}"
-    
-    if ! validate_volume_name "$BTRFS_HOME_VOL"; then
-        log_error "Invalid BTRFS home volume name"
-        return 1
-    fi
-    
-    log_success "BTRFS home volume: $BTRFS_HOME_VOL"
+    # BTRFS_HOME_VOL is kept for @home subvolume label but not as separate partition
+    BTRFS_HOME_VOL="home"
+    log_success "BTRFS home subvolume: @home"
     
     log_info "BTRFS snapshots volume name"
     echo "This stores BTRFS snapshots for recovery"
@@ -702,40 +667,6 @@ phase_1b_interactive_configuration() {
     fi
     
     log_success "BTRFS snapshots volume: $BTRFS_SNAP_VOL"
-    
-    # SECTION 3: ENCRYPTION CONFIGURATION
-    log_info ""
-    log_info "SECTION 3: LUKS Encryption Names"
-    echo ""
-    
-    log_info "LUKS encrypted root volume name"
-    echo "This is the cryptographic mapping name for root"
-    read -p "Root encryption name [yumraj]: " input_crypt_root
-    LUKS_ROOT_NAME="${input_crypt_root:-yumraj}"
-    
-    if ! validate_volume_name "$LUKS_ROOT_NAME"; then
-        log_error "Invalid LUKS root name"
-        return 1
-    fi
-    
-    log_success "Root encryption: $LUKS_ROOT_NAME"
-    
-    log_info "LUKS encrypted home volume name"
-    echo "This is the cryptographic mapping name for home"
-    read -p "Home encryption name [yumdut]: " input_crypt_home
-    LUKS_HOME_NAME="${input_crypt_home:-yumdut}"
-    
-    if ! validate_volume_name "$LUKS_HOME_NAME"; then
-        log_error "Invalid LUKS home name"
-        return 1
-    fi
-    
-    log_success "Home encryption: $LUKS_HOME_NAME"
-    
-    # SECTION 4: OPTIONAL FEATURES
-    log_info ""
-    log_info "SECTION 4: Optional Features"
-    echo ""
     
     log_info "Include @log BTRFS subvolume?"
     echo "(Separates systemd journal - improves snapshot efficiency)"
@@ -781,16 +712,14 @@ phase_1b_interactive_configuration() {
     log_info ""
     log_info "STORAGE CONFIGURATION:"
     log_info "  Storage Device:          $TARGET_DEVICE"
-    log_info "  Root Partition:          ${ROOT_SIZE_GB}GB"
-    log_info "  Home Partition:          ${HOME_SIZE_GB}GB"
-    log_info "  BTRFS Root Volume:       $BTRFS_ROOT_VOL"
-    log_info "  BTRFS Home Volume:       $BTRFS_HOME_VOL"
-    log_info "  BTRFS Snapshots Volume:  $BTRFS_SNAP_VOL"
+    log_info "  EFI Partition:           1GB"
+    log_info "  Root Partition:          $((AVAILABLE_SPACE_GB - 1))GB (all BTRFS subvolumes)"
+    log_info "  BTRFS Layout:            Single-partition with subvolumes"
+    log_info "  Subvolumes:              @, @home, @var, @snapshots, @varcache, @log"
     log_info ""
     log_info "ENCRYPTION:"
-    log_info "  Root Encryption:         $LUKS_ROOT_NAME"
-    log_info "  Home Encryption:         $LUKS_HOME_NAME"
-    log_info "  Passphrase Mode:         Single passphrase (unlocks both)"
+    log_info "  LUKS Device Name:        $LUKS_ROOT_NAME"
+    log_info "  Encryption Mode:         Single passphrase for entire system"
     log_info ""
     log_info "OPTIONAL FEATURES:"
     log_info "  @log Subvolume:          $ADD_LOG_SUBVOLUME"
@@ -817,7 +746,6 @@ phase_1b_interactive_configuration() {
     save_state "BTRFS_HOME_VOL" "$BTRFS_HOME_VOL"
     save_state "BTRFS_SNAP_VOL" "$BTRFS_SNAP_VOL"
     save_state "LUKS_ROOT_NAME" "$LUKS_ROOT_NAME"
-    save_state "LUKS_HOME_NAME" "$LUKS_HOME_NAME"
     save_state "ADD_LOG_SUBVOLUME" "$ADD_LOG_SUBVOLUME"
     save_state "ENABLE_NVIDIA_GPU" "$ENABLE_NVIDIA_GPU"
     save_state "SNAPSHOT_RETENTION" "$SNAPSHOT_RETENTION"
@@ -909,21 +837,17 @@ phase_2_device_configuration() {
     if [[ "$TARGET_DEVICE" == *"nvme"* ]] || [[ "$TARGET_DEVICE" == *"mmcblk"* ]]; then
         BOOT_PARTITION="${TARGET_DEVICE}p1"
         ROOT_PARTITION="${TARGET_DEVICE}p2"
-        HOME_PARTITION="${TARGET_DEVICE}p3"
     else
         BOOT_PARTITION="${TARGET_DEVICE}1"
         ROOT_PARTITION="${TARGET_DEVICE}2"
-        HOME_PARTITION="${TARGET_DEVICE}3"
     fi
     
     log_info "Partition configuration:"
-    log_info "  Boot: $BOOT_PARTITION"
-    log_info "  Root: $ROOT_PARTITION (${ROOT_SIZE_GB}GB)"
-    log_info "  Home: $HOME_PARTITION (${HOME_SIZE_GB}GB)"
+    log_info "  Boot: $BOOT_PARTITION (1GB EFI)"
+    log_info "  Root: $ROOT_PARTITION ($((AVAILABLE_SPACE_GB - 1))GB BTRFS with all subvolumes)"
     
     save_state "BOOT_PARTITION" "$BOOT_PARTITION"
     save_state "ROOT_PARTITION" "$ROOT_PARTITION"
-    save_state "HOME_PARTITION" "$HOME_PARTITION"
     
     log_success "Phase 2 completed successfully"
 }
@@ -984,7 +908,6 @@ phase_3_disk_preparation() {
     
     log_info "Closing any remaining LUKS volumes by name..."
     cryptsetup close "${LUKS_ROOT_NAME}" 2>/dev/null || true
-    cryptsetup close "${LUKS_HOME_NAME}" 2>/dev/null || true
     
     log_info "Wiping existing filesystem signatures from $TARGET_DEVICE..."
     execute_cmd "wipefs -af $TARGET_DEVICE" "Wiping all filesystem signatures" true
@@ -1018,15 +941,8 @@ phase_3_disk_preparation() {
     sync
     sleep 1
     
-    log_info "Creating root partition (${ROOT_SIZE_GB}GB)..."
-    local root_start_mib=1025
-    local root_end_mib=$((root_start_mib + ROOT_SIZE_GB * 1024))
-    execute_cmd "parted -s -a optimal $TARGET_DEVICE mkpart primary ${root_start_mib}MiB ${root_end_mib}MiB" "Creating root partition" true
-    sync
-    sleep 1
-    
-    log_info "Creating home partition (${HOME_SIZE_GB}GB, remainder)..."
-    execute_cmd "parted -s -a optimal $TARGET_DEVICE mkpart primary ${root_end_mib}MiB 100%" "Creating home partition" true
+    log_info "Creating root partition (all remaining space for BTRFS)..."
+    execute_cmd "parted -s -a optimal $TARGET_DEVICE mkpart primary 1025MiB 100%" "Creating root partition" true
     sync
     sleep 1
     
@@ -1049,17 +965,10 @@ phase_3_disk_preparation() {
         return 1
     fi
     
-    if [[ ! -b "$HOME_PARTITION" ]]; then
-        log_error "Home partition $HOME_PARTITION not found"
-        lsblk "$TARGET_DEVICE" | tee -a "$LOG_FILE"
-        return 1
-    fi
-    
     log_success "All partitions verified successfully"
     
-    log_info "Setting partition types (LUKS)..."
+    log_info "Setting partition type (LUKS)..."
     parted -s "$TARGET_DEVICE" set 2 type 8309 2>/dev/null || log_warn "Could not set root partition type (non-critical)"
-    parted -s "$TARGET_DEVICE" set 3 type 8309 2>/dev/null || log_warn "Could not set home partition type (non-critical)"
     
     log_info "Final partition table:"
     parted -s "$TARGET_DEVICE" print | tee -a "$LOG_FILE"
@@ -1194,120 +1103,19 @@ phase_4_luks_encryption() {
     log_success "Root partition encrypted and opened successfully"
     log_success "Mapped device: /dev/mapper/$LUKS_ROOT_NAME"
     
-    # ═══════════════════════════════════════════════════════════
-    # ENCRYPT HOME PARTITION (SAME METHOD)
-    # ═══════════════════════════════════════════════════════════
-    
-    log_info "Preparing home partition for encryption..."
     sleep 2
     udevadm settle --timeout=10 || true
-    
-    if [[ ! -b "$HOME_PARTITION" ]]; then
-        log_error "Home partition $HOME_PARTITION not available"
-        lsblk "$TARGET_DEVICE" | tee -a "$LOG_FILE"
-        return 1
-    fi
-    
-    # Check if already encrypted
-    if cryptsetup isLuks "$HOME_PARTITION" 2>/dev/null; then
-        log_warn "Home partition already has LUKS header"
-        echo "YES" | cryptsetup luksErase "$HOME_PARTITION" 2>/dev/null || true
-        sync
-        sleep 2
-    fi
-    
-    log_info "Encrypting home partition with LUKS2 (using SAME passphrase)..."
-    
-    # Create secure temporary keyfile
-    local temp_keyfile_home="/tmp/luks-home-key-$$"
-    echo -n "$luks_passphrase" > "$temp_keyfile_home"
-    chmod 600 "$temp_keyfile_home"
-    
-    # LUKS format (piping YES to bypass strict confirmation)
-    if ! echo "YES" | cryptsetup luksFormat \
-        --type luks2 \
-        --pbkdf argon2id \
-        --pbkdf-force-iterations 4 \
-        --label "LUKS_HOME" \
-        --key-file "$temp_keyfile_home" \
-        "$HOME_PARTITION" 2>&1 | tee -a "$LOG_FILE"; then
-        
-        shred -vfz -n 3 "$temp_keyfile_home" 2>/dev/null || rm -f "$temp_keyfile_home"
-        log_error "LUKS format failed for home partition"
-        return 1
-    fi
-    
-    sync
-    sleep 3
-    udevadm settle --timeout=10 || true
-    
-    # Verify LUKS header
-    if ! cryptsetup isLuks "$HOME_PARTITION"; then
-        shred -vfz -n 3 "$temp_keyfile_home" 2>/dev/null || rm -f "$temp_keyfile_home"
-        log_error "LUKS header verification failed for home partition"
-        return 1
-    fi
-    
-    log_info "Opening encrypted home volume..."
-    
-    # Open with keyfile
-    if ! cryptsetup luksOpen \
-        --key-file "$temp_keyfile_home" \
-        "$HOME_PARTITION" "$LUKS_HOME_NAME" 2>&1 | tee -a "$LOG_FILE"; then
-        
-        shred -vfz -n 3 "$temp_keyfile_home" 2>/dev/null || rm -f "$temp_keyfile_home"
-        log_error "Failed to open LUKS home volume"
-        cryptsetup luksDump "$HOME_PARTITION" 2>&1 | tee -a "$LOG_FILE"
-        return 1
-    fi
-    
-    # Securely delete keyfile
-    shred -vfz -n 3 "$temp_keyfile_home" 2>/dev/null || rm -f "$temp_keyfile_home"
-    
-    sleep 1
-    udevadm settle --timeout=10 || true
-    
-    if [[ ! -b "/dev/mapper/$LUKS_HOME_NAME" ]]; then
-        log_error "Encrypted home device /dev/mapper/$LUKS_HOME_NAME not found"
-        ls -la /dev/mapper/ | tee -a "$LOG_FILE"
-        return 1
-    fi
-    
-    log_success "Home partition encrypted and opened with SAME passphrase"
-    
-    # Configure a secondary LUKS keyslot for home using a keyfile so that
-    # home can be unlocked automatically after root is unlocked at boot.
-    HOME_LUKS_KEYFILE_TEMP="/tmp/parss-home-luks-key-$$"
-    log_info "Generating LUKS keyfile for automatic home unlock..."
-    if dd if=/dev/urandom of="$HOME_LUKS_KEYFILE_TEMP" bs=4096 count=1 status=none 2>>"$LOG_FILE"; then
-        chmod 600 "$HOME_LUKS_KEYFILE_TEMP" 2>>"$LOG_FILE" || true
-        # Add the new keyfile as an additional keyslot, authenticating with the
-        # existing passphrase held in memory (not logged).
-        if printf '%s' "$luks_passphrase" | \
-            cryptsetup luksAddKey "$HOME_PARTITION" "$HOME_LUKS_KEYFILE_TEMP" --key-file - 2>>"$LOG_FILE"; then
-            log_success "Added keyfile-based LUKS keyslot for home partition"
-        else
-            log_warn "Failed to add keyfile-based LUKS keyslot for home; home will require a passphrase at boot."
-            shred -vfz -n 3 "$HOME_LUKS_KEYFILE_TEMP" 2>/dev/null || rm -f "$HOME_LUKS_KEYFILE_TEMP"
-            HOME_LUKS_KEYFILE_TEMP=""
-        fi
-    else
-        log_warn "Failed to generate home LUKS keyfile; home will require a passphrase at boot."
-        shred -vfz -n 3 "$HOME_LUKS_KEYFILE_TEMP" 2>/dev/null || rm -f "$HOME_LUKS_KEYFILE_TEMP"
-        HOME_LUKS_KEYFILE_TEMP=""
-    fi
     
     # ═══════════════════════════════════════════════════════════
     # FINAL VERIFICATION
     # ═══════════════════════════════════════════════════════════
     
-    log_info "Verifying encrypted volumes..."
+    log_info "Verifying encrypted volume..."
     ls -la /dev/mapper/ | tee -a "$LOG_FILE"
     
     log_info "LUKS status summary:"
     log_info "  Root: $ROOT_PARTITION → /dev/mapper/$LUKS_ROOT_NAME"
-    log_info "  Home: $HOME_PARTITION → /dev/mapper/$LUKS_HOME_NAME"
-    log_info "  Single passphrase: ✓"
+    log_info "  Encryption: ✓"
 
     # ═══════════════════════════════════════════════════════════
     # LUKS PASSPHRASE SELF-TEST (NON-INTERACTIVE)
@@ -1332,7 +1140,6 @@ phase_4_luks_encryption() {
     log_success "LUKS passphrase self-test successful for $ROOT_PARTITION"
 
     save_state "ROOT_CRYPT_OPENED" "true"
-    save_state "HOME_ENCRYPTED" "true"
     log_success "Phase 4 completed successfully"
 }
 
@@ -1561,42 +1368,16 @@ phase_7_mount_configuration() {
     log_info "Generated fstab:"
     cat "$MOUNT_ROOT/etc/fstab" | tee -a "$LOG_FILE"
     
-    log_info "Configuring crypttab for encrypted volumes..."
+    log_info "Configuring crypttab for encrypted root volume..."
     
     local root_partuuid
     root_partuuid=$(blkid -s PARTUUID -o value "$ROOT_PARTITION")
     
-    local home_partuuid
-    home_partuuid=$(blkid -s PARTUUID -o value "$HOME_PARTITION")
-    
-    # If a temporary keyfile for home was created in Phase 4, persist it into
-    # the target root filesystem and reference it from crypttab so that the
-    # home volume can be unlocked automatically after root is mounted.
-    local crypttab_home_key_field="none"
-    local home_keyfile_dest_path="/root/.luks-keyfile-home"
-    if [[ -n "${HOME_LUKS_KEYFILE_TEMP:-}" && -f "$HOME_LUKS_KEYFILE_TEMP" ]]; then
-        local home_keyfile_dest="$MOUNT_ROOT$home_keyfile_dest_path"
-        log_info "Persisting home LUKS keyfile to $home_keyfile_dest"
-        if install -m 0400 "$HOME_LUKS_KEYFILE_TEMP" "$home_keyfile_dest" 2>>"$LOG_FILE"; then
-            shred -vfz -n 3 "$HOME_LUKS_KEYFILE_TEMP" 2>/dev/null || rm -f "$HOME_LUKS_KEYFILE_TEMP"
-            HOME_LUKS_KEYFILE_TEMP=""
-            crypttab_home_key_field="$home_keyfile_dest_path"
-            log_success "Home LUKS keyfile persisted inside encrypted root filesystem"
-        else
-            log_warn "Failed to persist home LUKS keyfile; falling back to interactive passphrase for home at boot."
-            shred -vfz -n 3 "$HOME_LUKS_KEYFILE_TEMP" 2>/dev/null || rm -f "$HOME_LUKS_KEYFILE_TEMP"
-            HOME_LUKS_KEYFILE_TEMP=""
-        fi
-    else
-        log_info "No temporary home LUKS keyfile present; home will prompt for a passphrase at boot."
-    fi
-
     cat > "$MOUNT_ROOT/etc/crypttab" << EOF
 $LUKS_ROOT_NAME	PARTUUID=$root_partuuid	none	luks,x-systemd.device-timeout=10
-$LUKS_HOME_NAME	PARTUUID=$home_partuuid	$crypttab_home_key_field	luks,x-systemd.device-timeout=10
 EOF
     
-    log_info "crypttab configuration (single passphrase for root; home uses keyfile when available):"
+    log_info "crypttab configuration (single encrypted root with all BTRFS subvolumes):"
     cat "$MOUNT_ROOT/etc/crypttab" | tee -a "$LOG_FILE"
     
     save_state "FSTAB_GENERATED" "true"
@@ -2028,9 +1809,8 @@ phase_13_final_verification() {
     umount -l "$MOUNT_ROOT/boot" 2>/dev/null || true
     umount -l "$MOUNT_ROOT" 2>/dev/null || true
     
-    log_info "Closing LUKS encrypted volumes..."
+    log_info "Closing LUKS encrypted volume..."
     cryptsetup luksClose "${LUKS_ROOT_NAME}" 2>/dev/null || true
-    cryptsetup luksClose "${LUKS_HOME_NAME}" 2>/dev/null || true
     
     log_success "Installation completed and filesystems unmounted"
     save_state "INSTALLATION_COMPLETE" "true"
@@ -2083,12 +1863,10 @@ main() {
     log_info ""
     log_info "System Information:"
     log_info "  Hostname: $HOSTNAME_SYS"
-    log_info "  Root partition: ${ROOT_SIZE_GB}GB (encrypted)"
-    log_info "  Home partition: ${HOME_SIZE_GB}GB (encrypted)"
+    log_info "  Root partition: $((AVAILABLE_SPACE_GB - 1))GB (encrypted BTRFS with all subvolumes)"
     log_info "  User: $PRIMARY_USER"
-    log_info "  LUKS root name: $LUKS_ROOT_NAME"
-    log_info "  LUKS home name: $LUKS_HOME_NAME"
-    log_info "  Passphrase mode: Single passphrase (unlocks both)"
+    log_info "  LUKS device name: $LUKS_ROOT_NAME"
+    log_info "  Encryption: Single passphrase for entire system"
     log_info ""
     log_info "Features:"
     log_info "  ✓ LUKS2 encryption (Argon2id KDF) - SINGLE PASSPHRASE"
