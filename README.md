@@ -131,7 +131,68 @@ recovery procedures.
 
 ---
 
-## 5. Documentation Layout
+## 5. PARSS vs Other Arch Installers
+
+PARSS is designed for **security-focused, repeatable installs** with optional desktop rice. Here's how it compares to official and community installers:
+
+| Feature | **PARSS** | archinstall (Official) | LARBS |
+|---------|-----------|------------------------|-------|
+| **Runs from** | Arch ISO | Arch ISO | Already-installed Arch |
+| **Disk partitioning** | ✅ Automated (EFI+root) | ✅ Interactive menu | ❌ Assumes done |
+| **LUKS encryption** | ✅ Mandatory (LUKS2+Argon2id) | ✅ Optional | ❌ N/A |
+| **Filesystem** | ✅ BTRFS with subvolumes | ✅ ext4/BTRFS/XFS/F2FS | ❌ N/A |
+| **Base system** | ✅ Full pacstrap | ✅ Full pacstrap | ❌ Assumes done |
+| **Bootloader** | ✅ GRUB | ✅ GRUB/systemd-boot | ❌ Assumes done |
+| **Multi-boot (Windows)** | ✅ os-prober | ✅ os-prober | ❌ N/A |
+| **Security hardening** | ✅ sysctl + kernel params | ❌ None | ❌ None |
+| **BTRFS snapshots** | ✅ Automated weekly | ❌ Manual only | ❌ None |
+| **Multi-kernel** | ✅ linux-zen + linux-lts | ❌ Single kernel | ❌ N/A |
+| **Desktop profiles** | ❌ Optional post-install | ✅ KDE/GNOME/i3/etc. | ✅ dwm/i3 |
+| **Dotfiles** | ✅ Via desktop-setup.sh | ❌ None | ✅ voidrice |
+| **Secure Boot/TPM2** | ❌ Not implemented | ✅ Supported | ❌ N/A |
+| **User interface** | Bash prompts | Python TUI menus | dialog TUI |
+| **Automation level** | High (few prompts) | Medium (many menus) | High (automated rice) |
+
+### When to use PARSS:
+- **Frequent testing/reinstalls** → Automated, fast workflow
+- **Security-focused** → Mandatory encryption + hardening
+- **BTRFS users** → Snapshots, subvolumes, modern layout
+- **Modular approach** → Base system separate from desktop
+
+### When to use archinstall:
+- **First-time Arch users** → Official support, extensive menus
+- **Desktop profiles** → Want KDE/GNOME out-of-box
+- **Secure Boot/TPM2** → Modern boot security required
+- **Multiple filesystems** → Need ext4, XFS, etc.
+
+### When to use LARBS:
+- **Already have Arch** → Post-install rice automation
+- **Luke Smith workflow** → Pre-configured suckless setup
+- **Quick desktop** → Full environment in 10 minutes
+
+### Do you need Secure Boot or TPM2?
+
+**Short answer: Probably not.**
+
+- **Secure Boot**: Prevents unauthorized bootloaders/kernels. Useful for:
+  - Dual-boot with Windows 11 (requires Secure Boot)
+  - Corporate/enterprise compliance
+  - Protection against evil maid attacks on physical hardware
+  
+- **TPM2**: Hardware security module for storing encryption keys. Useful for:
+  - Automatic LUKS unlock without passphrase (convenience vs security trade-off)
+  - BitLocker integration on dual-boot systems
+  - Enterprise key management
+
+**For your use case (testing VMs, personal systems):**
+- ❌ **Don't need Secure Boot** → PARSS's LUKS2 + Argon2id is secure enough
+- ❌ **Don't need TPM2** → Passphrase-based LUKS is more secure than auto-unlock
+
+**PARSS focuses on strong encryption + hardening**, which is more practical than Secure Boot for most users. If you need Secure Boot later, use `archinstall` or configure it manually.
+
+---
+
+## 6. Documentation Layout
 
 To avoid duplicated information, PARSS intentionally keeps docs minimal:
 
@@ -145,7 +206,7 @@ Older standalone guides have been merged into `PARSS-MANUAL.md` and removed.
 
 ---
 
-## 6. Licensing and Attribution
+## 7. Licensing and Attribution
 
 PARSS builds on ideas and code structure from:
 
