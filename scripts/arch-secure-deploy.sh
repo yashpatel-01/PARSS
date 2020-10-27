@@ -1748,6 +1748,100 @@ TIMER
     log_success "Phase 12 completed successfully"
 }
 
+phase_14_optional_desktop_setup() {
+    log_section "PHASE 14: OPTIONAL DESKTOP ENVIRONMENT SETUP"
+    
+    log_info ""
+    log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log_info "Base system installation is complete!"
+    log_info ""
+    log_info "Would you like to install the desktop environment and dotfiles NOW?"
+    log_info ""
+    log_info "This will:"
+    log_info "  • Clone your archrice dotfiles repository"
+    log_info "  • Install packages from progs.csv (suckless tools, browsers, etc.)"
+    log_info "  • Build and install dwm, st, dmenu, slstatus"
+    log_info "  • Deploy all dotfiles to /home/$PRIMARY_USER"
+    log_info ""
+    log_info "Advantages of installing now:"
+    log_info "  ✓ No reboot needed - continue setup immediately"
+    log_info "  ✓ Network is already configured"
+    log_info "  ✓ Faster testing workflow"
+    log_info ""
+    log_info "Note: You can always install this later by running desktop-setup.sh"
+    log_info "      after booting into your new system."
+    log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log_info ""
+    
+    # Prompt user
+    local response
+    read -p "Install desktop environment now? (y/N): " response
+    
+    if [[ ! "$response" =~ ^[yY]$ ]]; then
+        log_info "Skipping desktop environment setup."
+        log_info "You can run 'desktop-setup.sh' after booting into the system."
+        save_state "DESKTOP_SETUP_SKIPPED" "true"
+        log_success "Phase 14 skipped by user"
+        return 0
+    fi
+    
+    log_info "Starting desktop environment installation..."
+    save_state "DESKTOP_SETUP_STARTED" "true"
+    
+    # Check if desktop-setup.sh exists in current directory
+    local desktop_script="$(dirname "$0")/desktop-setup.sh"
+    if [[ ! -f "$desktop_script" ]]; then
+        log_warn "desktop-setup.sh not found at: $desktop_script"
+        log_warn "Searching in parent directory..."
+        desktop_script="$(dirname "$(dirname "$0")")/scripts/desktop-setup.sh"
+        if [[ ! -f "$desktop_script" ]]; then
+            log_error "Cannot find desktop-setup.sh"
+            log_error "Please run it manually after reboot"
+            return 0
+        fi
+    fi
+    
+    # Copy desktop-setup.sh to the installed system
+    log_info "Copying desktop-setup.sh to installed system..."
+    cp "$desktop_script" "$MOUNT_ROOT/tmp/desktop-setup.sh" || {
+        log_error "Failed to copy desktop-setup.sh"
+        return 0
+    }
+    chmod +x "$MOUNT_ROOT/tmp/desktop-setup.sh"
+    
+    # Run desktop-setup.sh in chroot as the primary user
+    log_info "Running desktop-setup.sh in chroot environment as user: $PRIMARY_USER"
+    log_info "This may take 10-30 minutes depending on network speed..."
+    log_info ""
+    
+    # Execute desktop-setup.sh as the primary user
+    # Use sudo -u to run as primary user (AUR requires non-root)
+    arch-chroot "$MOUNT_ROOT" /bin/bash -c "
+        export HOME=/home/$PRIMARY_USER
+        cd /home/$PRIMARY_USER
+        sudo -u $PRIMARY_USER /tmp/desktop-setup.sh
+    " 2>&1 | tee -a "$LOG_FILE"
+    
+    local exit_code=${PIPESTATUS[0]}
+    
+    if [[ $exit_code -eq 0 ]]; then
+        log_success "Desktop environment setup completed successfully!"
+        save_state "DESKTOP_SETUP_COMPLETE" "true"
+        log_info ""
+        log_info "Desktop environment is now installed."
+        log_info "After reboot, login and run 'startx' to launch your environment."
+    else
+        log_warn "Desktop setup encountered issues (exit code: $exit_code)"
+        log_warn "Check the log for details. You can run desktop-setup.sh again after reboot."
+        save_state "DESKTOP_SETUP_ERROR" "true"
+    fi
+    
+    # Cleanup
+    rm -f "$MOUNT_ROOT/tmp/desktop-setup.sh"
+    
+    log_success "Phase 14 completed"
+}
+
 phase_13_final_verification() {
     log_section "PHASE 13: FINAL VERIFICATION & UNMOUNTING"
     
@@ -1820,6 +1914,7 @@ main() {
     phase_10_user_setup || exit 1
     phase_11_security_hardening || exit 1
     phase_12_snapshot_automation || exit 1
+    phase_14_optional_desktop_setup
     phase_13_final_verification || exit 1
     
     # Completion summary
@@ -1831,7 +1926,13 @@ main() {
     log_info "  2. Reboot system: reboot"
     log_info "  3. Enter your LUKS passphrase at boot"
     log_info "  4. Login with user: $PRIMARY_USER"
-    log_info "  5. (Optional) Run desktop-setup.sh for GUI environment (see below)"
+    
+    # Check if desktop was installed (variable is exported by phase_14 via save_state)
+    if [[ "${DESKTOP_SETUP_COMPLETE:-false}" == "true" ]]; then
+        log_info "  5. Run 'startx' to launch your desktop environment"
+    else
+        log_info "  5. (Optional) Run desktop-setup.sh for GUI environment (see below)"
+    fi
     log_info ""
     log_info "System Information:"
     log_info "  Hostname: $HOSTNAME_SYS"
@@ -1851,35 +1952,43 @@ main() {
     if [[ "$ENABLE_NVIDIA_GPU" == "true" ]]; then
         log_info "  ✓ NVIDIA GPU drivers (RTX A5500 support)"
     fi
+    if [[ "${DESKTOP_SETUP_COMPLETE:-false}" == "true" ]]; then
+        log_info "  ✓ Desktop environment (dwm/st/dmenu/slstatus)"
+        log_info "  ✓ Archrice dotfiles deployed"
+    fi
     log_info ""
-    log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    log_info ""
-    log_info "OPTIONAL: Desktop Environment & Dotfiles Setup"
-    log_info ""
-    log_info "The base system is complete. To add a desktop environment (dwm/st/dmenu)"
-    log_info "and your dotfiles, follow these steps AFTER rebooting:"
-    log_info ""
-    log_info "1. Boot into the new system and login as: $PRIMARY_USER"
-    log_info ""
-    log_info "2. Clone PARSS repository:"
-    log_info "   cd ~"
-    log_info "   git clone https://github.com/yashpatel-01/PARSS.git"
-    log_info "   cd PARSS/scripts"
-    log_info ""
-    log_info "3. Run the desktop setup script:"
-    log_info "   chmod +x desktop-setup.sh"
-    log_info "   ./desktop-setup.sh"
-    log_info ""
-    log_info "This will:"
-    log_info "  • Clone your archrice dotfiles (https://github.com/yashpatel-01/archrice)"
-    log_info "  • Install packages from progs.csv (suckless tools, browsers, etc.)"
-    log_info "  • Deploy dotfiles to your home directory"
-    log_info "  • Build suckless software (dwm, st, dmenu, slstatus)"
-    log_info ""
-    log_info "After desktop-setup.sh completes, run 'startx' to launch your environment."
-    log_info ""
-    log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    log_info ""
+    
+    # Only show manual instructions if desktop was NOT installed
+    if [[ "${DESKTOP_SETUP_COMPLETE:-false}" != "true" ]]; then
+        log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        log_info ""
+        log_info "OPTIONAL: Desktop Environment & Dotfiles Setup"
+        log_info ""
+        log_info "The base system is complete. To add a desktop environment (dwm/st/dmenu)"
+        log_info "and your dotfiles, follow these steps AFTER rebooting:"
+        log_info ""
+        log_info "1. Boot into the new system and login as: $PRIMARY_USER"
+        log_info ""
+        log_info "2. Clone PARSS repository:"
+        log_info "   cd ~"
+        log_info "   git clone https://github.com/yashpatel-01/PARSS.git"
+        log_info "   cd PARSS/scripts"
+        log_info ""
+        log_info "3. Run the desktop setup script:"
+        log_info "   chmod +x desktop-setup.sh"
+        log_info "   ./desktop-setup.sh"
+        log_info ""
+        log_info "This will:"
+        log_info "  • Clone your archrice dotfiles (https://github.com/yashpatel-01/archrice)"
+        log_info "  • Install packages from progs.csv (suckless tools, browsers, etc.)"
+        log_info "  • Deploy dotfiles to your home directory"
+        log_info "  • Build suckless software (dwm, st, dmenu, slstatus)"
+        log_info ""
+        log_info "After desktop-setup.sh completes, run 'startx' to launch your environment."
+        log_info ""
+        log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        log_info ""
+    fi
     log_info "Installation log: $LOG_FILE"
     log_info "Installation completed: $(date)"
     log_info ""
