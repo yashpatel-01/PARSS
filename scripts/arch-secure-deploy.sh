@@ -1579,6 +1579,22 @@ EOF
     log_info "Enabling NetworkManager service..."
     arch-chroot "$MOUNT_ROOT" systemctl enable NetworkManager
     
+    log_info "Enabling and configuring SSH service..."
+    arch-chroot "$MOUNT_ROOT" systemctl enable sshd
+    
+    # Configure SSH to allow root login with password (for development/testing)
+    # For production, consider using key-based authentication only
+    if [[ -f "$MOUNT_ROOT/etc/ssh/sshd_config" ]]; then
+        log_info "Configuring SSH to permit root login..."
+        # Uncomment and set PermitRootLogin to yes
+        sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' "$MOUNT_ROOT/etc/ssh/sshd_config"
+        # Ensure password authentication is enabled
+        sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' "$MOUNT_ROOT/etc/ssh/sshd_config"
+        log_success "SSH configured to allow root login"
+    else
+        log_warn "SSH config file not found, skipping SSH configuration"
+    fi
+    
     log_info "Configuring sudo access..."
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' "$MOUNT_ROOT/etc/sudoers"
     
@@ -1991,6 +2007,7 @@ main() {
     log_info "  ✓ Security hardening (sysctl + kernel parameters)"
     log_info "  ✓ Zen kernel for performance"
     log_info "  ✓ NetworkManager for networking"
+    log_info "  ✓ SSH server enabled (root login allowed for development)"
     log_info "  ✓ zsh as default shell"
     log_info "  ✓ X11 graphics stack"
     if [[ "$ENABLE_NVIDIA_GPU" == "true" ]]; then
