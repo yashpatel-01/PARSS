@@ -1576,10 +1576,14 @@ EOF
     arch-chroot "$MOUNT_ROOT" locale-gen
     echo "LANG=en_US.UTF-8" > "$MOUNT_ROOT/etc/locale.conf"
     
-    log_info "Enabling NetworkManager service..."
+    log_info "Enabling essential system services..."
+    
+    # NetworkManager - Network connectivity
+    log_info "Enabling NetworkManager..."
     arch-chroot "$MOUNT_ROOT" systemctl enable NetworkManager
     
-    log_info "Enabling and configuring SSH service..."
+    # SSH - Remote access
+    log_info "Enabling SSH service..."
     arch-chroot "$MOUNT_ROOT" systemctl enable sshd
     
     # Configure SSH to allow root login with password (for development/testing)
@@ -1594,6 +1598,21 @@ EOF
     else
         log_warn "SSH config file not found, skipping SSH configuration"
     fi
+    
+    # systemd-timesyncd - NTP time synchronization
+    log_info "Enabling time synchronization (systemd-timesyncd)..."
+    arch-chroot "$MOUNT_ROOT" systemctl enable systemd-timesyncd
+    
+    # fstrim.timer - SSD TRIM support (weekly automatic TRIM)
+    log_info "Enabling SSD TRIM timer (fstrim.timer)..."
+    arch-chroot "$MOUNT_ROOT" systemctl enable fstrim.timer
+    
+    # systemd-resolved - DNS resolver (optional, NetworkManager can handle DNS)
+    # Uncomment if you want systemd-resolved instead of NetworkManager's DNS
+    # log_info "Enabling systemd-resolved..."
+    # arch-chroot "$MOUNT_ROOT" systemctl enable systemd-resolved
+    
+    log_success "Essential system services enabled"
     
     log_info "Configuring sudo access..."
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' "$MOUNT_ROOT/etc/sudoers"
@@ -2008,6 +2027,8 @@ main() {
     log_info "  ✓ Zen kernel for performance"
     log_info "  ✓ NetworkManager for networking"
     log_info "  ✓ SSH server enabled (root login allowed for development)"
+    log_info "  ✓ Time synchronization (systemd-timesyncd)"
+    log_info "  ✓ SSD TRIM optimization (fstrim.timer - weekly)"
     log_info "  ✓ zsh as default shell"
     log_info "  ✓ X11 graphics stack"
     if [[ "$ENABLE_NVIDIA_GPU" == "true" ]]; then
