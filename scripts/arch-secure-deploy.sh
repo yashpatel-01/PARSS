@@ -1886,6 +1886,25 @@ phase_14_optional_desktop_setup() {
     }
     chmod +x "$MOUNT_ROOT/tmp/desktop-setup.sh"
     
+    # Verify the file was copied and is readable
+    if [[ ! -f "$MOUNT_ROOT/tmp/desktop-setup.sh" ]]; then
+        log_error "desktop-setup.sh not found after copy at $MOUNT_ROOT/tmp/desktop-setup.sh"
+        return 0
+    fi
+    
+    log_debug "Verifying desktop-setup.sh in chroot..."
+    log_debug "File size: $(stat -c%s "$MOUNT_ROOT/tmp/desktop-setup.sh" 2>/dev/null || echo 'unknown') bytes"
+    log_debug "File permissions: $(stat -c%a "$MOUNT_ROOT/tmp/desktop-setup.sh" 2>/dev/null || echo 'unknown')"
+    
+    # Test if sudo works in chroot before running desktop setup
+    log_debug "Testing sudo and user environment in chroot..."
+    if ! arch-chroot "$MOUNT_ROOT" /bin/bash -c "sudo -u $PRIMARY_USER whoami" >/dev/null 2>&1; then
+        log_error "sudo test failed in chroot - cannot run as user $PRIMARY_USER"
+        log_error "This may indicate a sudo configuration issue"
+        return 0
+    fi
+    log_debug "sudo test passed - proceeding with desktop setup"
+    
     # Run desktop-setup.sh in chroot as the primary user
     log_info "Running desktop-setup.sh in chroot environment as user: $PRIMARY_USER"
     log_info "This may take 10-30 minutes depending on network speed..."
@@ -1894,11 +1913,12 @@ phase_14_optional_desktop_setup() {
     # Execute desktop-setup.sh as the primary user
     # Use sudo -u to run as primary user (AUR requires non-root)
     # Set PARSS_CHROOT_INSTALL to bypass root check in desktop-setup.sh
+    # CRITICAL: Must explicitly invoke bash, not rely on shebang in chroot
     arch-chroot "$MOUNT_ROOT" /bin/bash -c "
         export HOME=/home/$PRIMARY_USER
         export PARSS_CHROOT_INSTALL=1
         cd /home/$PRIMARY_USER
-        sudo -u $PRIMARY_USER /tmp/desktop-setup.sh
+        sudo -u $PRIMARY_USER /bin/bash /tmp/desktop-setup.sh
     " 2>&1 | tee -a "$LOG_FILE"
     
     local exit_code=${PIPESTATUS[0]}
