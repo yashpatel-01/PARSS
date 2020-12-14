@@ -1985,7 +1985,86 @@ phase_13_final_verification() {
 # MAIN EXECUTION
 ################################################################################
 
+show_usage() {
+    cat << 'EOF'
+Usage: bash arch-secure-deploy.sh [OPTIONS]
+
+Options:
+  --start-from PHASE    Start from a specific phase (1-14)
+                        Example: --start-from 14
+  
+  --phase PHASE         Run only a specific phase
+                        Example: --phase 14
+  
+  --skip-unmount        Skip unmounting in phase 13 (for testing)
+  
+  --help, -h            Show this help message
+
+Examples:
+  # Full installation
+  bash arch-secure-deploy.sh
+  
+  # Test desktop setup only (assumes system is installed and mounted)
+  bash arch-secure-deploy.sh --phase 14
+  
+  # Resume from phase 14
+  bash arch-secure-deploy.sh --start-from 14
+  
+  # Continue installation without unmounting (for iterative testing)
+  bash arch-secure-deploy.sh --start-from 10 --skip-unmount
+
+Phase Numbers:
+  1   - Preflight checks
+  1b  - Interactive configuration
+  2   - Device configuration
+  3   - Disk preparation
+  4   - LUKS encryption
+  5   - BTRFS filesystem
+  6   - Base installation
+  7   - Mount configuration
+  8   - Chroot configuration
+  9   - System configuration
+  10  - User setup
+  11  - Security hardening
+  12  - BTRFS snapshots
+  13  - Final verification
+  14  - Optional desktop setup
+
+EOF
+}
+
 main() {
+    # Parse command-line arguments
+    local START_FROM_PHASE=1
+    local RUN_ONLY_PHASE=""
+    local SKIP_UNMOUNT=false
+    
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --start-from)
+                START_FROM_PHASE="$2"
+                shift 2
+                ;;
+            --phase)
+                RUN_ONLY_PHASE="$2"
+                shift 2
+                ;;
+            --skip-unmount)
+                SKIP_UNMOUNT=true
+                shift
+                ;;
+            --help|-h)
+                show_usage
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1"
+                show_usage
+                exit 1
+                ;;
+        esac
+    done
+    
     # Initialize logging
     mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$ERROR_LOG")"
     touch "$LOG_FILE" "$ERROR_LOG"
@@ -1999,22 +2078,49 @@ main() {
     log_info "Error log: $ERROR_LOG"
     log_info "State file: $STATE_FILE"
     
-    # Execute phases
-    phase_1_preflight_checks || exit 1
-    phase_1b_interactive_configuration || exit 1
-    phase_2_device_configuration || exit 1
-    phase_3_disk_preparation || exit 1
-    phase_4_luks_encryption || exit 1
-    phase_5_btrfs_filesystem || exit 1
-    phase_6_base_installation || exit 1
-    phase_7_mount_configuration || exit 1
-    phase_8_chroot_configuration || exit 1
-    phase_9_system_configuration || exit 1
-    phase_10_user_setup || exit 1
-    phase_11_security_hardening || exit 1
-    phase_12_snapshot_automation || exit 1
-    phase_14_optional_desktop_setup
-    phase_13_final_verification || exit 1
+    if [[ -n "$RUN_ONLY_PHASE" ]]; then
+        log_info "Running ONLY phase $RUN_ONLY_PHASE (testing mode)"
+        case "$RUN_ONLY_PHASE" in
+            14) phase_14_optional_desktop_setup ;;
+            13) phase_13_final_verification ;;
+            12) phase_12_snapshot_automation ;;
+            11) phase_11_security_hardening ;;
+            10) phase_10_user_setup ;;
+            9)  phase_9_system_configuration ;;
+            8)  phase_8_chroot_configuration ;;
+            7)  phase_7_mount_configuration ;;
+            6)  phase_6_base_installation ;;
+            5)  phase_5_btrfs_filesystem ;;
+            4)  phase_4_luks_encryption ;;
+            3)  phase_3_disk_preparation ;;
+            2)  phase_2_device_configuration ;;
+            1b) phase_1b_interactive_configuration ;;
+            1)  phase_1_preflight_checks ;;
+            *)  log_error "Invalid phase: $RUN_ONLY_PHASE"; exit 1 ;;
+        esac
+        return 0
+    fi
+    
+    if [[ "$START_FROM_PHASE" != "1" ]]; then
+        log_info "Starting from phase $START_FROM_PHASE (skipping earlier phases)"
+    fi
+    
+    # Execute phases (conditionally based on START_FROM_PHASE)
+    [[ $START_FROM_PHASE -le 1 ]] && { phase_1_preflight_checks || exit 1; }
+    [[ $START_FROM_PHASE -le 1 ]] && { phase_1b_interactive_configuration || exit 1; }
+    [[ $START_FROM_PHASE -le 2 ]] && { phase_2_device_configuration || exit 1; }
+    [[ $START_FROM_PHASE -le 3 ]] && { phase_3_disk_preparation || exit 1; }
+    [[ $START_FROM_PHASE -le 4 ]] && { phase_4_luks_encryption || exit 1; }
+    [[ $START_FROM_PHASE -le 5 ]] && { phase_5_btrfs_filesystem || exit 1; }
+    [[ $START_FROM_PHASE -le 6 ]] && { phase_6_base_installation || exit 1; }
+    [[ $START_FROM_PHASE -le 7 ]] && { phase_7_mount_configuration || exit 1; }
+    [[ $START_FROM_PHASE -le 8 ]] && { phase_8_chroot_configuration || exit 1; }
+    [[ $START_FROM_PHASE -le 9 ]] && { phase_9_system_configuration || exit 1; }
+    [[ $START_FROM_PHASE -le 10 ]] && { phase_10_user_setup || exit 1; }
+    [[ $START_FROM_PHASE -le 11 ]] && { phase_11_security_hardening || exit 1; }
+    [[ $START_FROM_PHASE -le 12 ]] && { phase_12_snapshot_automation || exit 1; }
+    [[ $START_FROM_PHASE -le 14 ]] && phase_14_optional_desktop_setup
+    [[ $START_FROM_PHASE -le 13 ]] && [[ "$SKIP_UNMOUNT" != "true" ]] && { phase_13_final_verification || exit 1; }
     
     # Completion summary
     log_section "INSTALLATION COMPLETED SUCCESSFULLY"
