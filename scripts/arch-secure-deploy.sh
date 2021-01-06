@@ -1826,8 +1826,6 @@ phase_14_optional_desktop_setup() {
     log_info "  ✓ Network is already configured"
     log_info "  ✓ Faster testing workflow"
     log_info ""
-    log_info "Note: You can always install this later by running desktop-setup.sh"
-    log_info "      after booting into your new system."
     log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     log_info ""
     
@@ -1837,7 +1835,6 @@ phase_14_optional_desktop_setup() {
     
     if [[ ! "$response" =~ ^[yY]$ ]]; then
         log_info "Skipping desktop environment setup."
-        log_info "You can run 'desktop-setup.sh' after booting into the system."
         save_state "DESKTOP_SETUP_SKIPPED" "true"
         log_success "Phase 14 skipped by user"
         return 0
@@ -1846,108 +1843,112 @@ phase_14_optional_desktop_setup() {
     log_info "Starting desktop environment installation..."
     save_state "DESKTOP_SETUP_STARTED" "true"
     
-    # Get absolute path of this script to find desktop-setup.sh
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    # Desktop setup configuration (like LARBS does it inline)
+    local DOTFILES_REPO="https://github.com/yashpatel-01/archrice.git"
+    local DOTFILES_DIR="/home/$PRIMARY_USER/.local/src/archrice"
+    local PROGS_FILE="$DOTFILES_DIR/progs.csv"
     
-    # Try multiple locations for desktop-setup.sh
-    local desktop_script=""
-    local search_paths=(
-        "$script_dir/desktop-setup.sh"                    # Same directory as installer
-        "$script_dir/../scripts/desktop-setup.sh"         # If run from parent dir
-        "$(pwd)/desktop-setup.sh"                         # Current working directory
-        "$(pwd)/scripts/desktop-setup.sh"                 # scripts/ in current dir
-    )
-    
-    log_debug "Searching for desktop-setup.sh in multiple locations..."
-    for path in "${search_paths[@]}"; do
-        log_debug "  Checking: $path"
-        if [[ -f "$path" ]]; then
-            desktop_script="$path"
-            log_info "Found desktop-setup.sh at: $desktop_script"
-            break
-        fi
-    done
-    
-    if [[ -z "$desktop_script" ]]; then
-        log_error "Cannot find desktop-setup.sh in any expected location:"
-        log_error "  - $script_dir/desktop-setup.sh"
-        log_error "  - $(pwd)/scripts/desktop-setup.sh"
-        log_error "Please ensure desktop-setup.sh is in the same directory as arch-secure-deploy.sh"
-        log_error "You can run it manually after reboot."
-        return 0
-    fi
-    
-    # Copy desktop-setup.sh to the installed system
-    # Use /root instead of /tmp (tmpfs might not persist in chroot)
-    log_info "Copying desktop-setup.sh to installed system..."
-    mkdir -p "$MOUNT_ROOT/root"
-    cp "$desktop_script" "$MOUNT_ROOT/root/desktop-setup.sh" || {
-        log_error "Failed to copy desktop-setup.sh"
-        return 0
-    }
-    chmod +x "$MOUNT_ROOT/root/desktop-setup.sh"
-    
-    # Verify the file was copied and is readable
-    if [[ ! -f "$MOUNT_ROOT/root/desktop-setup.sh" ]]; then
-        log_error "desktop-setup.sh not found after copy at $MOUNT_ROOT/root/desktop-setup.sh"
-        return 0
-    fi
-    
-    log_debug "Verifying desktop-setup.sh in chroot..."
-    log_debug "File size: $(stat -c%s "$MOUNT_ROOT/root/desktop-setup.sh" 2>/dev/null || echo 'unknown') bytes"
-    log_debug "File permissions: $(stat -c%a "$MOUNT_ROOT/root/desktop-setup.sh" 2>/dev/null || echo 'unknown')"
-    
-    # Verify file is accessible from within chroot
-    log_debug "Verifying file exists inside chroot..."
-    if ! arch-chroot "$MOUNT_ROOT" test -f /root/desktop-setup.sh; then
-        log_error "desktop-setup.sh not accessible inside chroot at /root/desktop-setup.sh"
-        log_error "Mount point may not be properly set up"
-        return 0
-    fi
-    log_debug "File verified inside chroot"
-    
-    # Test if sudo works in chroot before running desktop setup
-    log_debug "Testing sudo and user environment in chroot..."
-    if ! arch-chroot "$MOUNT_ROOT" /bin/bash -c "sudo -u $PRIMARY_USER whoami" >/dev/null 2>&1; then
-        log_error "sudo test failed in chroot - cannot run as user $PRIMARY_USER"
-        log_error "This may indicate a sudo configuration issue"
-        return 0
-    fi
-    log_debug "sudo test passed - proceeding with desktop setup"
-    
-    # Run desktop-setup.sh in chroot as the primary user
-    log_info "Running desktop-setup.sh in chroot environment as user: $PRIMARY_USER"
     log_info "This may take 10-30 minutes depending on network speed..."
     log_info ""
     
-    # Execute desktop-setup.sh as the primary user
-    # Use sudo -u to run as primary user (AUR requires non-root)
-    # Set PARSS_CHROOT_INSTALL to bypass root check in desktop-setup.sh
-    # CRITICAL: Must explicitly invoke bash, not rely on shebang in chroot
-    arch-chroot "$MOUNT_ROOT" /bin/bash -c "
-        export HOME=/home/$PRIMARY_USER
-        export PARSS_CHROOT_INSTALL=1
-        cd /home/$PRIMARY_USER
-        sudo -u $PRIMARY_USER /bin/bash /root/desktop-setup.sh
-    " 2>&1 | tee -a "$LOG_FILE"
+    # Execute desktop setup inline (LARBS-style: all logic in one script)
+    arch-chroot "$MOUNT_ROOT" /bin/bash <<DESKTOP_SETUP_EOF
+set -e
+
+# Helper functions
+info() { echo -e "\\033[0;32m[INFO]\\033[0m \$*"; }
+warn() { echo -e "\\033[1;33m[WARN]\\033[0m \$*"; }
+
+info "PARSS Desktop Setup starting..."
+
+# 1. Clone archrice dotfiles
+info "Cloning archrice dotfiles repository..."
+sudo -u $PRIMARY_USER mkdir -p "\$(dirname $DOTFILES_DIR)"
+if [[ -d "$DOTFILES_DIR/.git" ]]; then
+    info "Found existing archrice repo, pulling latest..."
+    sudo -u $PRIMARY_USER git -C "$DOTFILES_DIR" pull --ff-only || warn "Using existing copy"
+else
+    sudo -u $PRIMARY_USER git clone --depth 1 "$DOTFILES_REPO" "$DOTFILES_DIR" || {
+        warn "Failed to clone dotfiles"
+        exit 1
+    }
+fi
+
+# 2. Install packages from progs.csv
+if [[ ! -f "$PROGS_FILE" ]]; then
+    warn "No progs.csv found, skipping package installation"
+else
+    info "Installing packages from progs.csv..."
     
-    local exit_code=${PIPESTATUS[0]}
+    while IFS=, read -r tag prog comment; do
+        # Skip comments and blank lines
+        [[ -z "\${tag}\${prog}" ]] && continue
+        [[ "\$tag" =~ ^# ]] && continue
+        
+        case "\$tag" in
+            "" )
+                info "[pacman] \$prog - \$comment"
+                pacman --noconfirm --needed -S "\$prog" 2>&1 || warn "Failed: \$prog"
+                ;;
+            "G" )
+                info "[git/make] \$prog - \$comment"
+                repodir="/home/$PRIMARY_USER/.local/src"
+                sudo -u $PRIMARY_USER mkdir -p "\$repodir"
+                name="\${prog##*/}"
+                name="\${name%.git}"
+                dir="\$repodir/\$name"
+                
+                if [[ -d "\$dir/.git" ]]; then
+                    sudo -u $PRIMARY_USER git -C "\$dir" pull --ff-only 2>&1 || warn "Using existing: \$prog"
+                else
+                    sudo -u $PRIMARY_USER git clone --depth 1 "\$prog" "\$dir" 2>&1 || {
+                        warn "Clone failed: \$prog"
+                        continue
+                    }
+                fi
+                
+                (cd "\$dir" && sudo -u $PRIMARY_USER make && make install) 2>&1 || warn "Build failed: \$prog"
+                ;;
+            "A" )
+                # AUR packages - requires AUR helper (yay)
+                if command -v yay >/dev/null 2>&1; then
+                    info "[AUR] \$prog - \$comment"
+                    sudo -u $PRIMARY_USER yay --noconfirm --needed -S "\$prog" 2>&1 || warn "Failed: \$prog"
+                else
+                    warn "No AUR helper (yay) found, skipping: \$prog"
+                fi
+                ;;
+            * )
+                warn "Unknown tag '\$tag' for \$prog"
+                ;;
+        esac
+    done < "$PROGS_FILE"
+fi
+
+# 3. Deploy dotfiles
+info "Deploying dotfiles to /home/$PRIMARY_USER..."
+if command -v rsync >/dev/null 2>&1; then
+    sudo -u $PRIMARY_USER rsync -a --delete --exclude='.git' "$DOTFILES_DIR"/ "/home/$PRIMARY_USER"/
+else
+    warn "rsync not found, using cp"
+    sudo -u $PRIMARY_USER cp -rf "$DOTFILES_DIR"/. "/home/$PRIMARY_USER"/
+fi
+
+info "Desktop setup complete!"
+info "After reboot, login and run 'startx' to launch your environment."
+
+DESKTOP_SETUP_EOF
+    
+    local exit_code=$?
     
     if [[ $exit_code -eq 0 ]]; then
         log_success "Desktop environment setup completed successfully!"
         save_state "DESKTOP_SETUP_COMPLETE" "true"
-        log_info ""
-        log_info "Desktop environment is now installed."
-        log_info "After reboot, login and run 'startx' to launch your environment."
     else
         log_warn "Desktop setup encountered issues (exit code: $exit_code)"
-        log_warn "Check the log for details. You can run desktop-setup.sh again after reboot."
+        log_warn "Check the log for details."
         save_state "DESKTOP_SETUP_ERROR" "true"
     fi
-    
-    # Cleanup
-    rm -f "$MOUNT_ROOT/root/desktop-setup.sh"
     
     log_success "Phase 14 completed"
 }
