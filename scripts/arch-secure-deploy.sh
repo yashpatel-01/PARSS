@@ -1875,8 +1875,11 @@ else
 fi
 
 # 2. Install packages from progs.csv
+info "Looking for progs.csv at: $PROGS_FILE"
 if [[ ! -f "$PROGS_FILE" ]]; then
-    warn "No progs.csv found, skipping package installation"
+    warn "No progs.csv found at $PROGS_FILE"
+    info "Contents of $DOTFILES_DIR:"
+    ls -la "$DOTFILES_DIR" || warn "Directory doesn't exist"
 else
     info "Installing packages from progs.csv..."
     
