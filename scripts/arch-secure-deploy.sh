@@ -1517,6 +1517,36 @@ phase_8_chroot_configuration() {
     grep -E "^(GRUB_CMDLINE_LINUX|GRUB_ENABLE_CRYPTODISK|GRUB_DISTRIBUTOR|GRUB_DISABLE_OS_PROBER|GRUB_TIMEOUT)" "$grub_default" | tee -a "$LOG_FILE"
     
     # ═══════════════════════════════════════════════════════════
+    # RUN OS-PROBER TO DETECT OTHER OPERATING SYSTEMS
+    # ═══════════════════════════════════════════════════════════
+    
+    log_info "Running os-prober to detect other operating systems and drives..."
+    log_info "This will scan all available partitions..."
+    
+    # Mount all partitions so os-prober can detect them
+    arch-chroot "$MOUNT_ROOT" bash -c "
+        # Try to mount all unmounted partitions temporarily
+        for dev in /dev/sd* /dev/nvme*n*p* /dev/vd*; do
+            [[ -b \"\$dev\" ]] || continue
+            # Skip our own encrypted/mounted partitions
+            mountpoint -q \"\$dev\" && continue
+            # Try to mount read-only temporarily
+            mkdir -p /mnt/probe\${dev##*/} 2>/dev/null
+            mount -o ro \"\$dev\" /mnt/probe\${dev##*/} 2>/dev/null || true
+        done
+    " 2>/dev/null || true
+    
+    # Run os-prober to scan for other OSes
+    arch-chroot "$MOUNT_ROOT" os-prober 2>&1 | tee -a "$LOG_FILE" || log_warn "os-prober found no other operating systems"
+    
+    # Unmount probe mounts
+    arch-chroot "$MOUNT_ROOT" bash -c "
+        for mnt in /mnt/probe*; do
+            [[ -d \"\$mnt\" ]] && umount \"\$mnt\" 2>/dev/null && rmdir \"\$mnt\" 2>/dev/null || true
+        done
+    " 2>/dev/null || true
+    
+    # ═══════════════════════════════════════════════════════════
     # GENERATE GRUB CONFIGURATION
     # ═══════════════════════════════════════════════════════════
     
@@ -1890,11 +1920,11 @@ else
         
         case "\$tag" in
             "" )
-                info "[pacman] \$prog - \$comment"
-                pacman --noconfirm --needed -S "\$prog" 2>&1 || warn "Failed: \$prog"
+                info "[pacman] \$prog"
+                pacman --noconfirm --needed -S "\$prog" >/dev/null 2>&1 || warn "Failed: \$prog"
                 ;;
             "G" )
-                info "[git/make] \$prog - \$comment"
+                info "[git/make] \$prog"
                 repodir="/home/$PRIMARY_USER/.local/src"
                 sudo -u $PRIMARY_USER mkdir -p "\$repodir"
                 name="\${prog##*/}"
@@ -1902,21 +1932,21 @@ else
                 dir="\$repodir/\$name"
                 
                 if [[ -d "\$dir/.git" ]]; then
-                    sudo -u $PRIMARY_USER git -C "\$dir" pull --ff-only 2>&1 || warn "Using existing: \$prog"
+                    sudo -u $PRIMARY_USER git -C "\$dir" pull --ff-only >/dev/null 2>&1 || warn "Using existing: \$prog"
                 else
-                    sudo -u $PRIMARY_USER git clone --depth 1 "\$prog" "\$dir" 2>&1 || {
+                    sudo -u $PRIMARY_USER git clone --depth 1 --quiet "\$prog" "\$dir" >/dev/null 2>&1 || {
                         warn "Clone failed: \$prog"
                         continue
                     }
                 fi
                 
-                (cd "\$dir" && sudo -u $PRIMARY_USER make && make install) 2>&1 || warn "Build failed: \$prog"
+                (cd "\$dir" && sudo -u $PRIMARY_USER make >/dev/null 2>&1 && make install >/dev/null 2>&1) || warn "Build failed: \$prog"
                 ;;
             "A" )
                 # AUR packages - requires AUR helper (yay)
                 if command -v yay >/dev/null 2>&1; then
-                    info "[AUR] \$prog - \$comment"
-                    sudo -u $PRIMARY_USER yay --noconfirm --needed -S "\$prog" 2>&1 || warn "Failed: \$prog"
+                    info "[AUR] \$prog"
+                    sudo -u $PRIMARY_USER yay --noconfirm --needed -S "\$prog" >/dev/null 2>&1 || warn "Failed: \$prog"
                 else
                     warn "No AUR helper (yay) found, skipping: \$prog"
                 fi
