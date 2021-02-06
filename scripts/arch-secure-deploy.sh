@@ -1967,7 +1967,70 @@ else
     sudo -u $PRIMARY_USER cp -rf "$DOTFILES_DIR"/. "/home/$PRIMARY_USER"/
 fi
 
+# 4. Configure OLED/HiDPI optimizations
+info "Configuring OLED theme and HiDPI support..."
+
+# Make scripts executable
+chmod +x /home/$PRIMARY_USER/.local/bin/* 2>/dev/null || true
+
+# Set default OLED black wallpaper
+wallpaper_dir="/home/$PRIMARY_USER/.local/share/wallpapers"
+if [[ -f "\$wallpaper_dir/oled-black.png" ]]; then
+    sudo -u $PRIMARY_USER ln -sf "\$wallpaper_dir/oled-black.png" "/home/$PRIMARY_USER/.local/share/bg"
+    info "✓ OLED black wallpaper set as default"
+elif [[ -f "\$wallpaper_dir/generate-oled-black.sh" ]]; then
+    # Generate wallpaper if script exists
+    chmod +x "\$wallpaper_dir/generate-oled-black.sh"
+    sudo -u $PRIMARY_USER bash "\$wallpaper_dir/generate-oled-black.sh" && \
+    sudo -u $PRIMARY_USER ln -sf "\$wallpaper_dir/oled-black.png" "/home/$PRIMARY_USER/.local/share/bg" && \
+    info "✓ Generated and set OLED black wallpaper"
+fi
+
+# Auto-detect and configure DPI for HiDPI displays
+if [[ -x "/home/$PRIMARY_USER/.local/bin/detect-hidpi" ]]; then
+    info "Auto-detecting HiDPI settings..."
+    sudo -u $PRIMARY_USER /home/$PRIMARY_USER/.local/bin/detect-hidpi 2>&1 | grep -E "Detected|Recommended" || true
+fi
+
+# Configure DWM with no gaps (OLED-friendly)
+dwm_config="/home/$PRIMARY_USER/.local/src/dwm/config.h"
+if [[ -f "\$dwm_config" ]] && [[ -x "/home/$PRIMARY_USER/.local/bin/configure-dwm-nogaps" ]]; then
+    info "Removing DWM gaps for OLED display..."
+    sudo -u $PRIMARY_USER /home/$PRIMARY_USER/.local/bin/configure-dwm-nogaps "/home/$PRIMARY_USER/.local/src/dwm" && \
+    cd "/home/$PRIMARY_USER/.local/src/dwm" && \
+    sudo -u $PRIMARY_USER make >/dev/null 2>&1 && make install >/dev/null 2>&1 && \
+    info "✓ DWM recompiled with zero gaps"
+fi
+
+# Copy nvim config to root for consistent theme in 'sudo vim'
+info "Configuring root user theme consistency..."
+mkdir -p /root/.config
+if [[ -d "/home/$PRIMARY_USER/.config/nvim" ]]; then
+    cp -r "/home/$PRIMARY_USER/.config/nvim" /root/.config/
+    info "✓ Neovim config copied to root (same theme for 'sudo vim')"
+fi
+
+# Copy Xresources to root
+if [[ -f "/home/$PRIMARY_USER/.config/x11/xresources" ]]; then
+    cp "/home/$PRIMARY_USER/.config/x11/xresources" /root/.Xresources
+    info "✓ Xresources copied to root"
+fi
+
 info "Desktop setup complete!"
+info ""
+info "OLED/HiDPI Configuration Summary:"
+info "  • Moonfly OLED theme: Pure black (#000000) background"
+info "  • DPI scaling: Auto-detected based on screen resolution"
+info "  • Wallpaper: OLED black (pixels off = zero power)"
+info "  • DWM gaps: Removed (edge-to-edge windows)"
+info "  • Root theme: Same as user (consistent colors)"
+info ""
+info "Font Size Customization:"
+info "  • Default: 12pt (becomes 24px at 2x DPI)"
+info "  • To change: Edit ~/.config/x11/xresources"
+info "  • Look for: *.font: monospace:size=12"
+info "  • Or edit suckless configs in ~/.local/src/"
+info ""
 info "After reboot, login and run 'startx' to launch your environment."
 
 DESKTOP_SETUP_EOF
