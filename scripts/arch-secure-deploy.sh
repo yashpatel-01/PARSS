@@ -1891,6 +1891,14 @@ warn() { echo -e "\\033[1;33m[WARN]\\033[0m \$*"; }
 
 info "PARSS Desktop Setup starting..."
 
+# 0. Setup temporary passwordless sudo (LARBS method)
+# Required for AUR package builds which need to install as root
+info "Configuring temporary passwordless sudo for AUR builds..."
+trap 'rm -f /etc/sudoers.d/parss-temp' HUP INT QUIT TERM PWR EXIT
+echo "%wheel ALL=(ALL) NOPASSWD: ALL
+Defaults:%wheel,root runcwd=*" >/etc/sudoers.d/parss-temp
+info "✓ Temporary sudo configured (will be removed after setup)"
+
 # 1. Clone archrice dotfiles
 info "Cloning archrice dotfiles repository..."
 sudo -u $PRIMARY_USER mkdir -p "\$(dirname $DOTFILES_DIR)"
@@ -2048,6 +2056,11 @@ info "  • DWM: No gaps (maximize space)"
 info "  • Root/user: Same theme"
 info ""
 info "After reboot: login and run 'startx'"
+
+# Cleanup: Remove temporary passwordless sudo
+info "Cleaning up temporary sudo configuration..."
+rm -f /etc/sudoers.d/parss-temp
+info "✓ Temporary sudo removed (security restored)"
 
 DESKTOP_SETUP_EOF
     
