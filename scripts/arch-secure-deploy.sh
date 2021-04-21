@@ -2060,7 +2060,7 @@ Install complete desktop environment (DWM + Dotfiles)
 
 💡 TIP: Can install later with:
    sudo bash arch-secure-deploy.sh --phase 14"
-
+    
     # Use TUI if available, otherwise text prompt
     if [[ "$TUI_AVAILABLE" == "true" ]]; then
         if ! tui_yesno "PHASE 14: Desktop Environment" "$prompt_message" 25 78; then
