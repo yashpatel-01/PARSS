@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 
 ################################################################################
 # ARCH LINUX SECURE RESEARCH DEPLOYMENT - FINAL PRODUCTION v2.2
@@ -10,19 +10,19 @@
 # Version: 2.2 (Updated - Single passphrase, menu selection, new defaults)
 #
 # Features:
-#   ✓ Interactive user input (hostname, username, BTRFS volume names)
-#   ✓ Customizable partition sizing (root: 170-190GB, home: remainder)
-#   ✓ LUKS2 encryption with Argon2id KDF (mandatory)
-#   ✓ BTRFS filesystem with multi-subvolume architecture
-#   ✓ Comprehensive error recovery (15+ scenarios)
-#   ✓ Security hardening (kernel params, sysctl tuning)
-#   ✓ BTRFS automatic snapshot automation (weekly)
-#   ✓ (Planned) CSV-driven package installation (pacman/AUR/git)
-#   ✓ (Planned) Automatic archrice/PARSS dotfiles deployment
-#   ✓ (Planned) Suckless window manager stack (dwm, st, dmenu, slstatus)
-#   ✓ Network resilience with retry logic
-#   ✓ Extensive logging and state tracking
-#   ✓ Disaster recovery mechanisms
+#   âœ“ Interactive user input (hostname, username, BTRFS volume names)
+#   âœ“ Customizable partition sizing (root: 170-190GB, home: remainder)
+#   âœ“ LUKS2 encryption with Argon2id KDF (mandatory)
+#   âœ“ BTRFS filesystem with multi-subvolume architecture
+#   âœ“ Comprehensive error recovery (15+ scenarios)
+#   âœ“ Security hardening (kernel params, sysctl tuning)
+#   âœ“ BTRFS automatic snapshot automation (weekly)
+#   âœ“ (Planned) CSV-driven package installation (pacman/AUR/git)
+#   âœ“ (Planned) Automatic archrice/PARSS dotfiles deployment
+#   âœ“ (Planned) Suckless window manager stack (dwm, st, dmenu, slstatus)
+#   âœ“ Network resilience with retry logic
+#   âœ“ Extensive logging and state tracking
+#   âœ“ Disaster recovery mechanisms
 #
 # Usage: sudo bash ./arch-secure-deploy-production.sh
 #
@@ -61,41 +61,41 @@ trap 'last_command=$current_command; current_command=$BASH_COMMAND' DEBUG
 trap 'echo "[ERROR] \"${last_command}\" command failed with exit code $? at line $LINENO"' ERR
 
 # Changes in v2.2:
-#   ✓ Root partition: Single BTRFS partition with all subvolumes (was split root+home)
-#   ✓ Default hostname: devta (was archlinux)
-#   ✓ Default username: patel (was empty)
-#   ✓ Default BTRFS names: root/home/snapshots (was arch_root/arch_home/arch_snapshots)
-#   ✓ Default LUKS name: mahadev (was yumraj, single partition only)
-#   ✓ Default log subvolume: yes (was yes)
-#   ✓ Default NVIDIA: yes (was yes)
-#   ✓ Default snapshot retention: 12 (was 8)
-#   ✓ Device selection: Menu-based (1/2/3) instead of typing full path
-#   ✓ Single LUKS passphrase: Both root and home use same password
-#   ✓ Unlock once: Only one passphrase prompt at boot (unlocks both)
+#   âœ“ Root partition: Single BTRFS partition with all subvolumes (was split root+home)
+#   âœ“ Default hostname: devta (was archlinux)
+#   âœ“ Default username: patel (was empty)
+#   âœ“ Default BTRFS names: root/home/snapshots (was arch_root/arch_home/arch_snapshots)
+#   âœ“ Default LUKS name: mahadev (was yumraj, single partition only)
+#   âœ“ Default log subvolume: yes (was yes)
+#   âœ“ Default NVIDIA: yes (was yes)
+#   âœ“ Default snapshot retention: 12 (was 8)
+#   âœ“ Device selection: Menu-based (1/2/3) instead of typing full path
+#   âœ“ Single LUKS passphrase: Both root and home use same password
+#   âœ“ Unlock once: Only one passphrase prompt at boot (unlocks both)
 #
 # Usage: sudo bash ./arch-secure-deploy-production-FINAL.sh
 #
 # Version: 2.4 (PARSS Enhanced - Reliability & Security Pillars)
 #
 # Bug Fixes in v2.3:
-#   ✓ Fixed partition creation alignment issues
-#   ✓ Fixed device synchronization after partitioning
-#   ✓ Added udevadm settle for kernel partition table refresh
-#   ✓ Fixed partition naming for NVMe vs SATA devices
-#   ✓ Added partition verification before encryption
-#   ✓ Improved error handling and logging
-#   ✓ Added sleep delays for device readiness
-#   ✓ Fixed cryptsetup passphrase input handling
+#   âœ“ Fixed partition creation alignment issues
+#   âœ“ Fixed device synchronization after partitioning
+#   âœ“ Added udevadm settle for kernel partition table refresh
+#   âœ“ Fixed partition naming for NVMe vs SATA devices
+#   âœ“ Added partition verification before encryption
+#   âœ“ Improved error handling and logging
+#   âœ“ Added sleep delays for device readiness
+#   âœ“ Fixed cryptsetup passphrase input handling
 #
 # Previous features (v2.2):
-#   ✓ Root partition: Single BTRFS partition with all subvolumes
-#   ✓ Default hostname: devta
-#   ✓ Default username: patel
-#   ✓ Default BTRFS names: root/home/snapshots
-#   ✓ Default LUKS name: mahadev
-#   ✓ Default snapshot retention: 12
-#   ✓ Menu-based device selection
-#   ✓ Single-partition BTRFS layout (all subvolumes on one encrypted partition)
+#   âœ“ Root partition: Single BTRFS partition with all subvolumes
+#   âœ“ Default hostname: devta
+#   âœ“ Default username: patel
+#   âœ“ Default BTRFS names: root/home/snapshots
+#   âœ“ Default LUKS name: mahadev
+#   âœ“ Default snapshot retention: 12
+#   âœ“ Menu-based device selection
+#   âœ“ Single-partition BTRFS layout (all subvolumes on one encrypted partition)
 #
 ################################################################################
 
@@ -162,7 +162,7 @@ init_tui() {
     else
         TUI_AVAILABLE=true
     fi
-    
+
     # Configure whiptail colors: black background with colored text
     if [[ "$TUI_AVAILABLE" == "true" ]]; then
         export NEWT_COLORS="
@@ -191,7 +191,7 @@ actsellistbox=black,cyan
 tui_info() {
     local title="$1"
     local message="$2"
-    
+
     if [[ "$TUI_AVAILABLE" == "true" ]]; then
         whiptail --title "$title" --infobox "$message" 8 70
     fi
@@ -204,7 +204,7 @@ tui_gauge() {
     local title="$1"
     local message="$2"
     local percent="$3"
-    
+
     if [[ "$TUI_AVAILABLE" == "true" ]]; then
         echo "$percent" | whiptail --title "$title" --gauge "$message" 8 70 0
     else
@@ -218,16 +218,16 @@ tui_msgbox() {
     local message="$2"
     local height="${3:-10}"
     local width="${4:-70}"
-    
+
     if [[ "$TUI_AVAILABLE" == "true" ]]; then
         whiptail --title "$title" --msgbox "$message" "$height" "$width"
     else
         echo ""
-        echo "═══════════════════════════════════════════════════════════"
+        echo "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
         echo "$title"
-        echo "═══════════════════════════════════════════════════════════"
+        echo "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
         echo "$message"
-        echo "═══════════════════════════════════════════════════════════"
+        echo "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
         read -p "Press Enter to continue..."
     fi
 }
@@ -238,7 +238,7 @@ tui_yesno() {
     local question="$2"
     local height="${3:-10}"
     local width="${4:-70}"
-    
+
     if [[ "$TUI_AVAILABLE" == "true" ]]; then
         if whiptail --title "$title" --yesno "$question" "$height" "$width"; then
             return 0
@@ -247,11 +247,11 @@ tui_yesno() {
         fi
     else
         echo ""
-        echo "═══════════════════════════════════════════════════════════"
+        echo "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
         echo "$title"
-        echo "═══════════════════════════════════════════════════════════"
+        echo "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
         echo "$question"
-        echo "═══════════════════════════════════════════════════════════"
+        echo "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
         read -p "Continue? (y/N): " response
         [[ "$response" =~ ^[yY]$ ]] && return 0 || return 1
     fi
@@ -263,11 +263,11 @@ tui_package_progress() {
     local total="$2"
     local package_name="$3"
     local operation="$4"  # "installing", "building", etc.
-    
+
     local percent=$((current * 100 / total))
     local title="PARSS Installation Progress"
     local message="Package $current of $total: $package_name\n\n$operation..."
-    
+
     tui_info "$title" "$message"
 }
 
@@ -276,10 +276,10 @@ tui_phase_start() {
     local phase_num="$1"
     local phase_name="$2"
     local description="$3"
-    
+
     local title="PARSS - Phase $phase_num"
     local message="Starting: $phase_name\n\n$description"
-    
+
     tui_info "$title" "$message"
     sleep 1  # Brief pause so user can see
 }
@@ -289,7 +289,7 @@ tui_long_operation() {
     local title="$1"
     local message="$2"
     local duration="${3:-10}"  # Default 10 seconds
-    
+
     if [[ "$TUI_AVAILABLE" == "true" ]]; then
         (
             for i in $(seq 0 5 100); do
@@ -310,7 +310,7 @@ tui_long_operation() {
 trap_error() {
     local line_number=$1
     local error_code=${2:-1}
-    
+
     echo -e "${RED}[FATAL ERROR]${NC} Script failed at line ${line_number} (exit code: $error_code)" | tee -a "$ERROR_LOG"
     echo "Diagnostic Information:" | tee -a "$ERROR_LOG"
     echo "  Timestamp: $(date)" | tee -a "$ERROR_LOG"
@@ -321,7 +321,7 @@ trap_error() {
     echo "  Full log: $LOG_FILE" >&2
     echo "  Error log: $ERROR_LOG" >&2
     echo "  State file: $STATE_FILE" >&2
-    
+
     cleanup_on_error
     exit "$error_code"
 }
@@ -363,12 +363,12 @@ log_debug() {
 
 log_success() {
     local message="$1"
-    echo -e "${GREEN}[✓ SUCCESS]${NC} $message" | tee -a "$LOG_FILE"
+    echo -e "${GREEN}[âœ“ SUCCESS]${NC} $message" | tee -a "$LOG_FILE"
 }
 
 log_error() {
     local message="$1"
-    echo -e "${RED}[✗ ERROR]${NC} $message" | tee -a "$LOG_FILE" "$ERROR_LOG"
+    echo -e "${RED}[âœ— ERROR]${NC} $message" | tee -a "$LOG_FILE" "$ERROR_LOG"
 }
 
 log_section() {
@@ -384,17 +384,17 @@ execute_cmd() {
     local cmd="$1"
     local description="${2:-Executing command}"
     local critical="${3:-true}"
-    
+
     log_debug "$description"
     log_debug "Command: $cmd"
-    
+
     if eval "$cmd" >> "$LOG_FILE" 2>&1; then
         log_debug "$description - SUCCESS"
         return 0
     else
         local exit_code=$?
         local error_msg="$description - FAILED (exit code: $exit_code)"
-        
+
         if [[ "$critical" == "true" ]]; then
             log_error "$error_msg"
             echo "Command: $cmd" >> "$ERROR_LOG"
@@ -413,23 +413,23 @@ execute_cmd_retry() {
     local description="$2"
     local max_attempts="${3:-$MAX_RETRIES}"
     local attempt=1
-    
+
     while [[ $attempt -le $max_attempts ]]; do
         log_info "[$attempt/$max_attempts] $description"
-        
+
         if eval "$cmd" >> "$LOG_FILE" 2>&1; then
             log_success "$description - SUCCESS"
             return 0
         fi
-        
+
         if [[ $attempt -lt $max_attempts ]]; then
             log_warn "Attempt $attempt failed, retrying in ${RETRY_DELAY}s..."
             sleep "$RETRY_DELAY"
         fi
-        
+
         ((attempt++))
     done
-    
+
     log_error "$description - FAILED after $max_attempts attempts"
     return 1
 }
@@ -453,17 +453,17 @@ load_state() {
 # Validate block device and offer to unmount if needed
 validate_block_device() {
     local device="$1"
-    
+
     if [[ ! -b "$device" ]]; then
         log_error "Device $device is not a block device"
         return 1
     fi
-    
+
     # Check if anything is mounted on this device or its partitions
     local mounted_info
     mounted_info=$(findmnt -n -o TARGET,SOURCE | grep "$device" || true)
     log_debug "Mounted info for $device: '$mounted_info'"
-    
+
     if [[ -n "$mounted_info" ]]; then
         log_warn "Device $device or its partitions are currently mounted:"
         echo "$mounted_info" | tee -a "$LOG_FILE"
@@ -507,7 +507,7 @@ validate_block_device() {
             return 1
         fi
     fi
-    
+
     log_success "Block device $device validated"
     return 0
 }
@@ -517,11 +517,11 @@ confirm_destructive_operation() {
     local device="$1"
     local size_gb
     size_gb=$(lsblk -bnd -o SIZE "$device" | awk '{printf "%.0f", $1/(1024**3)}')
-    
+
     echo ""
-    echo -e "${RED}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${RED}║                    ⚠️  DESTRUCTIVE OPERATION  ⚠️                 ║${NC}"
-    echo -e "${RED}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${RED}â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—${NC}"
+    echo -e "${RED}â•‘                    âš ï¸  DESTRUCTIVE OPERATION  âš ï¸                 â•‘${NC}"
+    echo -e "${RED}â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
     echo -e "Device: ${YELLOW}$device${NC}"
     echo -e "Size: ${YELLOW}${size_gb}GB${NC}"
@@ -532,15 +532,15 @@ confirm_destructive_operation() {
     echo "  2. Confirm you have backed up all important data"
     echo "  3. Type 'YES' to proceed"
     echo ""
-    
+
     read -p "Type 'y' or 'Y' to confirm: " confirmation
     echo
-    
+
     if [[ ! "$confirmation" =~ ^[yY]([eE][sS])?$ ]]; then
         log_error "Operation cancelled by user"
         exit 1
     fi
-    
+
     log_success "Destructive operation confirmed for $device"
 }
 
@@ -574,77 +574,77 @@ validate_volume_name() {
 # Validate passphrase strength
 validate_passphrase_strength() {
     local passphrase="$1"
-    
+
     # if [[ ${#passphrase} -lt 12 ]]; then
     #     return 1
     # fi
-    
+
     # if [[ ! "$passphrase" =~ [A-Z] ]]; then
     #     return 1
     # fi
-    
+
     # if [[ ! "$passphrase" =~ [a-z] ]]; then
     #     return 1
     # fi
-    
+
     # if [[ ! "$passphrase" =~ [0-9] ]]; then
     #     return 1
     # fi
-    
+
     return 0
 }
 
 # Prompt for LUKS passphrase
 prompt_luks_passphrase() {
     log_section "LUKS ENCRYPTION PASSPHRASE SETUP"
-    
+
     echo ""
-    echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║                  ENCRYPTION PASSPHRASE SETUP                    ║${NC}"
-    echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${CYAN}â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—${NC}"
+    echo -e "${CYAN}â•‘                  ENCRYPTION PASSPHRASE SETUP                    â•‘${NC}"
+    echo -e "${CYAN}â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
     echo "Passphrase Requirements:"
-    echo "  • Minimum 12 characters"
-    echo "  • At least one uppercase letter (A-Z)"
-    echo "  • At least one lowercase letter (a-z)"
-    echo "  • At least one number (0-9)"
-    echo "  • Special characters recommended"
+    echo "  â€¢ Minimum 12 characters"
+    echo "  â€¢ At least one uppercase letter (A-Z)"
+    echo "  â€¢ At least one lowercase letter (a-z)"
+    echo "  â€¢ At least one number (0-9)"
+    echo "  â€¢ Special characters recommended"
     echo ""
-    echo -e "${YELLOW}⚠️  You will need this passphrase to boot your system every time${NC}"
-    echo -e "${YELLOW}⚠️  Write it down and store it in a secure location${NC}"
-    echo -e "${YELLOW}⚠️  This passphrase will unlock the encrypted root partition (containing all BTRFS subvolumes)${NC}"
+    echo -e "${YELLOW}âš ï¸  You will need this passphrase to boot your system every time${NC}"
+    echo -e "${YELLOW}âš ï¸  Write it down and store it in a secure location${NC}"
+    echo -e "${YELLOW}âš ï¸  This passphrase will unlock the encrypted root partition (containing all BTRFS subvolumes)${NC}"
     echo ""
-    
+
     local passphrase=""
     local passphrase_confirm=""
     local attempts=0
-    
+
     while [[ $attempts -lt 3 ]]; do
         read -sp "Enter passphrase: " passphrase
         echo ""
-        
+
         if ! validate_passphrase_strength "$passphrase"; then
             log_warn "Passphrase does not meet requirements. Try again."
             ((attempts++))
             continue
         fi
-        
+
         read -sp "Confirm passphrase: " passphrase_confirm
         echo ""
-        
+
         if [[ "$passphrase" != "$passphrase_confirm" ]]; then
             log_warn "Passphrases do not match. Try again."
             ((attempts++))
             continue
         fi
-        
+
         log_success "Passphrase validated successfully"
         # Store in global variable for caller instead of echoing,
         # so command substitution does not capture all UI output.
         PROMPTED_LUKS_PASSPHRASE="$passphrase"
         return 0
     done
-    
+
     log_error "Failed to set valid passphrase after 3 attempts"
     return 1
 }
@@ -652,9 +652,9 @@ prompt_luks_passphrase() {
 # Prompt for partition size
 prompt_partition_size() {
     echo ""
-    echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║               CUSTOM PARTITION SIZE CONFIGURATION               ║${NC}"
-    echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${CYAN}â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—${NC}"
+    echo -e "${CYAN}â•‘               CUSTOM PARTITION SIZE CONFIGURATION               â•‘${NC}"
+    echo -e "${CYAN}â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
     echo "Total available space: ${AVAILABLE_SPACE_GB}GB"
     echo ""
@@ -670,21 +670,21 @@ prompt_partition_size() {
     echo "  - @varcache (package cache)"
     echo "  - @log (system logs)"
     echo ""
-    
+
     echo -e "${GREEN}Partition Layout:${NC}"
     echo "  EFI System Partition: 1GB"
     echo "  Root partition:       $((AVAILABLE_SPACE_GB - 1))GB (all BTRFS subvolumes)"
     echo "  Total:                ${AVAILABLE_SPACE_GB}GB"
     echo ""
-    
+
     read -p "Proceed with this configuration? (y/n) [y]: " confirm_partition
     confirm_partition=${confirm_partition:-y}
-    
+
     if [[ ! "$confirm_partition" =~ ^[yY]([eE][sS])?$ ]]; then
         log_error "Installation cancelled by user"
         return 1
     fi
-    
+
     log_success "Partition configuration confirmed"
     return 0
 }
@@ -695,14 +695,14 @@ check_disk_space() {
     local total_bytes
     total_bytes=$(lsblk -bnd -o SIZE "$device")
     AVAILABLE_SPACE_GB=$((total_bytes / (1024**3)))
-    
+
     log_info "Available disk space: ${AVAILABLE_SPACE_GB}GB"
-    
+
     if [[ $AVAILABLE_SPACE_GB -lt 51 ]]; then
         log_error "Insufficient disk space. Minimum required: 51GB (1GB EFI + 50GB root), Available: ${AVAILABLE_SPACE_GB}GB"
         return 1
     fi
-    
+
     return 0
 }
 
@@ -713,41 +713,41 @@ check_disk_space() {
 phase_1_preflight_checks() {
     tui_phase_start "1" "Pre-flight Checks" "Validating system requirements and environment"
     log_section "PHASE 1: PRE-FLIGHT VALIDATION"
-    
+
     log_info "Checking system resources..."
-    
+
     local cpu_cores
     cpu_cores=$(nproc)
     log_debug "CPU cores: $cpu_cores"
-    
+
     local ram_gb
     ram_gb=$(free -g | awk '/^Mem:/{print $2}')
     log_debug "RAM: ${ram_gb}GB"
-    
+
     if [[ $ram_gb -lt 4 ]]; then
         log_warn "RAM is below recommended 4GB (current: ${ram_gb}GB)"
     fi
-    
+
     log_info "Checking network connectivity..."
-    
+
     if execute_cmd_retry "ping -c 2 -W 2 archlinux.org &>/dev/null" "Network connectivity check" 2; then
         log_success "Network connectivity verified"
     else
         log_warn "Network connectivity check failed"
     fi
-    
+
     log_info "Verifying required tools..."
     local required_tools=("cryptsetup" "parted" "mkfs.btrfs" "pacstrap" "arch-chroot" "genfstab" "udevadm")
-    
+
     for tool in "${required_tools[@]}"; do
         if command -v "$tool" &> /dev/null; then
-            log_debug "✓ $tool available"
+            log_debug "âœ“ $tool available"
         else
             log_error "Required tool not found: $tool"
             return 1
         fi
     done
-    
+
     log_success "Phase 1 completed successfully"
 }
 
@@ -758,80 +758,80 @@ phase_1_preflight_checks() {
 phase_1b_interactive_configuration() {
     tui_phase_start "1B" "System Configuration" "Collecting installation parameters"
     log_section "PHASE 1B: INTERACTIVE SYSTEM CONFIGURATION"
-    
+
     echo ""
-    echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║         CUSTOM SYSTEM CONFIGURATION (Interactive)          ║${NC}"
-    echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${CYAN}â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—${NC}"
+    echo -e "${CYAN}â•‘         CUSTOM SYSTEM CONFIGURATION (Interactive)          â•‘${NC}"
+    echo -e "${CYAN}â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
     echo "This script will ask for custom names and settings."
     echo "Press Enter to use default values shown in [brackets]"
     echo ""
-    
+
     # SECTION 1: SYSTEM IDENTIFICATION
     log_info "SECTION 1: System Identification"
     echo ""
-    
+
     log_info "Enter system hostname (computer name)"
     echo "Examples: thinkpad-research, arch-laptop, secure-dev"
     read -p "Hostname [devta]: " input_hostname
     HOSTNAME_SYS="${input_hostname:-devta}"
-    
+
     if ! validate_hostname "$HOSTNAME_SYS"; then
         log_error "Invalid hostname. Use only alphanumeric and hyphens."
         return 1
     fi
-    
+
     log_success "Hostname: $HOSTNAME_SYS"
-    
+
     log_info "Enter primary username (login account)"
     echo "Examples: patel, research, developer"
     read -p "Username [patel]: " input_username
     PRIMARY_USER="${input_username:-patel}"
-    
+
     if ! validate_username "$PRIMARY_USER"; then
         log_error "Invalid username. Use only alphanumeric, underscore, or hyphen."
         return 1
     fi
-    
+
     log_success "Username: $PRIMARY_USER"
-    
+
     # SECTION 2: STORAGE & BTRFS CONFIGURATION
     log_info ""
     log_info "SECTION 2: Storage & BTRFS Configuration"
     echo ""
-    
+
     # BTRFS subvolumes use standard naming convention:
     # @, @home, @var, @snapshots, @varcache, @log (no customization needed)
     log_info "BTRFS subvolumes will use standard naming: @, @home, @var, @snapshots, @varcache, @log"
     log_success "BTRFS layout configured with standard subvolume names"
-    
+
     log_info "Include @log BTRFS subvolume?"
     echo "(Separates systemd journal - improves snapshot efficiency)"
     read -p "Include @log (y/n) [y]: " input_log
     ADD_LOG_SUBVOLUME="${input_log:-y}"
     [[ "$ADD_LOG_SUBVOLUME" =~ ^[yY]$ ]] && ADD_LOG_SUBVOLUME="true" || ADD_LOG_SUBVOLUME="false"
     log_success "@log subvolume: $ADD_LOG_SUBVOLUME"
-    
+
     log_info "Enable NVIDIA GPU drivers?"
     echo "(For RTX A5500 CUDA support)"
     read -p "Enable NVIDIA (y/n) [y]: " input_gpu
     ENABLE_NVIDIA_GPU="${input_gpu:-y}"
     [[ "$ENABLE_NVIDIA_GPU" =~ ^[yY]$ ]] && ENABLE_NVIDIA_GPU="true" || ENABLE_NVIDIA_GPU="false"
     log_success "NVIDIA GPU support: $ENABLE_NVIDIA_GPU"
-    
+
     log_info "Snapshot retention count"
     echo "(Number of weekly snapshots to keep: 12 = ~3 months)"
     read -p "Snapshot retention [12]: " input_snapshots
     SNAPSHOT_RETENTION="${input_snapshots:-12}"
-    
+
     if ! [[ "$SNAPSHOT_RETENTION" =~ ^[0-9]+$ ]] || [[ "$SNAPSHOT_RETENTION" -lt 2 ]]; then
         log_warn "Invalid snapshot retention, using default: 12"
         SNAPSHOT_RETENTION=12
     fi
-    
+
     log_success "Snapshot retention: $SNAPSHOT_RETENTION"
-    
+
     log_info "System timezone"
     echo ""
     echo "Common timezones:"
@@ -848,25 +848,25 @@ phase_1b_interactive_configuration() {
     echo "  Australia/Sydney        (Australia)"
     echo ""
     echo "To find your timezone:"
-    echo "  • List all: timedatectl list-timezones"
-    echo "  • Search:   timedatectl list-timezones | grep -i <region>"
-    echo "  • Example:  timedatectl list-timezones | grep -i america"
+    echo "  â€¢ List all: timedatectl list-timezones"
+    echo "  â€¢ Search:   timedatectl list-timezones | grep -i <region>"
+    echo "  â€¢ Example:  timedatectl list-timezones | grep -i america"
     echo ""
     read -p "Enter timezone [UTC]: " input_timezone
     SYSTEM_TIMEZONE="${input_timezone:-UTC}"
-    
+
     # Validate timezone exists
     if [[ ! -f "/usr/share/zoneinfo/$SYSTEM_TIMEZONE" ]]; then
         log_warn "Timezone '$SYSTEM_TIMEZONE' not found, using UTC"
         SYSTEM_TIMEZONE="UTC"
     fi
     log_success "Timezone: $SYSTEM_TIMEZONE"
-    
+
     # CONFIRMATION
     log_info ""
-    log_info "════════════════════════════════════════════════════════════"
+    log_info "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
     log_info "INSTALLATION SUMMARY - Please Review"
-    log_info "════════════════════════════════════════════════════════════"
+    log_info "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
     log_info ""
     log_info "SYSTEM IDENTIFICATION:"
     log_info "  Hostname:                $HOSTNAME_SYS"
@@ -889,19 +889,19 @@ phase_1b_interactive_configuration() {
     log_info "  Snapshot Retention:      $SNAPSHOT_RETENTION"
     log_info "  Timezone:                $SYSTEM_TIMEZONE"
     log_info ""
-    log_info "════════════════════════════════════════════════════════════"
+    log_info "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
     echo ""
-    
+
     read -p "Proceed with installation? (type 'y' to confirm): " final_confirm
-    
+
     if [[ ! "$final_confirm" =~ ^[yY]([eE][sS])?$ ]]; then
         log_error "Installation cancelled by user"
         exit 1
     fi
-    
+
     # SAVE CONFIGURATION TO STATE FILE
     log_info "Saving configuration..."
-    
+
     save_state "HOSTNAME_SYS" "$HOSTNAME_SYS"
     save_state "PRIMARY_USER" "$PRIMARY_USER"
     save_state "LUKS_ROOT_NAME" "$LUKS_ROOT_NAME"
@@ -909,7 +909,7 @@ phase_1b_interactive_configuration() {
     save_state "ENABLE_NVIDIA_GPU" "$ENABLE_NVIDIA_GPU"
     save_state "SNAPSHOT_RETENTION" "$SNAPSHOT_RETENTION"
     save_state "SYSTEM_TIMEZONE" "$SYSTEM_TIMEZONE"
-    
+
     log_success "Configuration saved to state file"
     log_success "Phase 1B completed successfully"
 }
@@ -921,35 +921,35 @@ phase_1b_interactive_configuration() {
 phase_2_device_configuration() {
     tui_phase_start "2" "Device Selection" "Selecting target device and partition layout"
     log_section "PHASE 2: DEVICE & PARTITION CONFIGURATION"
-    
+
     log_info "Available block devices:"
     echo ""
-    
+
     # Get list of block devices
     local -a devices
     mapfile -t devices < <(lsblk -d -n -o NAME,SIZE,TYPE | grep -E "nvme|sd" | awk '{print $1}')
-    
+
     if [[ ${#devices[@]} -eq 0 ]]; then
         log_error "No suitable storage devices found"
         return 1
     fi
-    
+
     # Display menu
     local i=1
     declare -A device_menu
-    
+
     for dev in "${devices[@]}"; do
         local full_path="/dev/$dev"
         local size=$(lsblk -d -n -o SIZE "$full_path")
         local type=$(lsblk -d -n -o TYPE "$full_path")
-        
+
         echo "  ($i) $full_path - $size - $type"
         device_menu[$i]="$full_path"
         ((i++))
     done
-    
+
     echo ""
-    
+
     # Get user selection (auto-select if only one device)
     if [[ ${#devices[@]} -eq 1 ]]; then
         TARGET_DEVICE="/dev/${devices[0]}"
@@ -961,38 +961,38 @@ phase_2_device_configuration() {
     else
         while true; do
             read -p "Select storage device (enter number 1-$((i-1))): " device_choice
-            
+
             if [[ ! "$device_choice" =~ ^[0-9]+$ ]]; then
                 log_warn "Invalid input. Please enter a number."
                 continue
             fi
-            
+
             if [[ -z "${device_menu[$device_choice]}" ]]; then
                 log_warn "Invalid selection. Choose a number between 1 and $((i-1))."
                 continue
             fi
-            
+
             TARGET_DEVICE="${device_menu[$device_choice]}"
-            
+
             if ! validate_block_device "$TARGET_DEVICE"; then
                 log_warn "Invalid or mounted device: $TARGET_DEVICE"
                 continue
             fi
-            
+
             break
         done
     fi
-    
+
     save_state "TARGET_DEVICE" "$TARGET_DEVICE"
-    
+
     if ! check_disk_space "$TARGET_DEVICE"; then
         return 1
     fi
-    
+
     prompt_partition_size
-    
+
     confirm_destructive_operation "$TARGET_DEVICE"
-    
+
     # Set partition names based on device type
     if [[ "$TARGET_DEVICE" == *"nvme"* ]] || [[ "$TARGET_DEVICE" == *"mmcblk"* ]]; then
         BOOT_PARTITION="${TARGET_DEVICE}p1"
@@ -1001,14 +1001,14 @@ phase_2_device_configuration() {
         BOOT_PARTITION="${TARGET_DEVICE}1"
         ROOT_PARTITION="${TARGET_DEVICE}2"
     fi
-    
+
     log_info "Partition configuration:"
     log_info "  Boot: $BOOT_PARTITION (1GB EFI)"
     log_info "  Root: $ROOT_PARTITION ($((AVAILABLE_SPACE_GB - 1))GB BTRFS with all subvolumes)"
-    
+
     save_state "BOOT_PARTITION" "$BOOT_PARTITION"
     save_state "ROOT_PARTITION" "$ROOT_PARTITION"
-    
+
     log_success "Phase 2 completed successfully"
 }
 
@@ -1064,12 +1064,12 @@ pre_flight_unmount_all() {
 phase_3_disk_preparation() {
     tui_phase_start "3" "Disk Preparation" "Wiping and partitioning target device"
     log_section "PHASE 3: DISK PREPARATION"
-    
+
     pre_flight_unmount_all
-    
+
     log_info "Closing any remaining LUKS volumes by name..."
     cryptsetup close "${LUKS_ROOT_NAME}" 2>/dev/null || true
-    
+
     log_info "Wiping existing filesystem signatures from $TARGET_DEVICE..."
     if [[ "$TUI_AVAILABLE" == "true" ]]; then
         (wipefs -af $TARGET_DEVICE 2>&1 && echo 50 && dd if=/dev/zero of="$TARGET_DEVICE" bs=1M count=10 status=none 2>&1 && echo 100) | whiptail --title "PARSS - Disk Preparation" --gauge "Wiping disk signatures and zeroing..." 8 70 0
@@ -1079,7 +1079,7 @@ phase_3_disk_preparation() {
         dd if=/dev/zero of="$TARGET_DEVICE" bs=1M count=10 status=none 2>&1 | tee -a "$LOG_FILE" || true
     fi
     sync
-    
+
     log_info "Creating new GPT partition table..."
     if ! parted -s "$TARGET_DEVICE" mklabel gpt >> "$LOG_FILE" 2>&1; then
         log_warn "parted reported an error while creating GPT label; verifying partition table..."
@@ -1093,7 +1093,7 @@ phase_3_disk_preparation() {
     log_success "GPT label is present on $TARGET_DEVICE"
     sync
     sleep 2
-    
+
     log_info "Creating EFI System Partition (1GB)..."
     # Use percentage for better alignment
     if ! parted -s -a optimal "$TARGET_DEVICE" mkpart ESP fat32 1MiB 1025MiB >> "$LOG_FILE" 2>&1; then
@@ -1104,40 +1104,40 @@ phase_3_disk_preparation() {
     fi
     sync
     sleep 1
-    
+
     log_info "Creating root partition (all remaining space for BTRFS)..."
     execute_cmd "parted -s -a optimal $TARGET_DEVICE mkpart primary 1025MiB 100%" "Creating root partition" true
     sync
     sleep 1
-    
+
     log_info "Refreshing partition table..."
     partprobe "$TARGET_DEVICE" 2>/dev/null || true
     udevadm settle --timeout=10 || true
     sync
     sleep 3
-    
+
     log_info "Verifying partitions exist..."
     if [[ ! -b "$BOOT_PARTITION" ]]; then
         log_error "Boot partition $BOOT_PARTITION not found"
         lsblk "$TARGET_DEVICE" | tee -a "$LOG_FILE"
         return 1
     fi
-    
+
     if [[ ! -b "$ROOT_PARTITION" ]]; then
         log_error "Root partition $ROOT_PARTITION not found"
         lsblk "$TARGET_DEVICE" | tee -a "$LOG_FILE"
         return 1
     fi
-    
+
     log_success "All partitions verified successfully"
-    
+
     log_info "Setting partition type (LUKS)..."
     parted -s "$TARGET_DEVICE" set 2 type 8309 2>/dev/null || log_warn "Could not set root partition type"
-    
+
     log_info "Final partition table:"
     parted -s "$TARGET_DEVICE" print | tee -a "$LOG_FILE"
     lsblk "$TARGET_DEVICE" | tee -a "$LOG_FILE"
-    
+
     log_success "Phase 3 completed successfully"
 }
 
@@ -1148,7 +1148,7 @@ phase_3_disk_preparation() {
 phase_4_luks_encryption() {
     tui_phase_start "4" "LUKS Encryption" "Setting up full-disk encryption"
     log_section "PHASE 4: LUKS ENCRYPTION"
-    
+
     local luks_passphrase
     PROMPTED_LUKS_PASSPHRASE=""
     prompt_luks_passphrase || return 1
@@ -1159,37 +1159,37 @@ phase_4_luks_encryption() {
     # for this installation run (for troubleshooting only).
     log_warn "[DEBUG] LUKS passphrase length: ${#luks_passphrase}"
     log_warn "[DEBUG] LUKS passphrase (raw): '$luks_passphrase'"
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # FORMAT EFI SYSTEM PARTITION
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     log_info "Formatting EFI System Partition..."
     sleep 2
     udevadm settle --timeout=10 || true
-    
+
     if [[ ! -b "$BOOT_PARTITION" ]]; then
         log_error "Boot partition $BOOT_PARTITION not available"
         return 1
     fi
-    
+
     execute_cmd "mkfs.fat -F 32 -n EFI $BOOT_PARTITION" "Formatting $BOOT_PARTITION as FAT32" true
     sync
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # ENCRYPT ROOT PARTITION (FIXED METHOD)
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     log_info "Preparing root partition for encryption..."
     sleep 2
     udevadm settle --timeout=10 || true
-    
+
     if [[ ! -b "$ROOT_PARTITION" ]]; then
         log_error "Root partition $ROOT_PARTITION not available"
         lsblk "$TARGET_DEVICE" | tee -a "$LOG_FILE"
         return 1
     fi
-    
+
     # Check if already encrypted (cleanup from previous failed attempt)
     if cryptsetup isLuks "$ROOT_PARTITION" 2>/dev/null; then
         log_warn "Root partition already has LUKS header"
@@ -1198,14 +1198,14 @@ phase_4_luks_encryption() {
         sync
         sleep 2
     fi
-    
+
     log_info "Encrypting root partition with LUKS2 (Argon2id KDF)..."
-    
+
     # Use temporary keyfile for LUKS setup
     local temp_keyfile_root="/tmp/luks-root-key-$$"
     echo -n "$luks_passphrase" > "$temp_keyfile_root"
     chmod 600 "$temp_keyfile_root"
-    
+
     # LUKS format with keyfile (piping YES to bypass strict confirmation)
     if ! echo "YES" | cryptsetup luksFormat \
         --type luks2 \
@@ -1214,37 +1214,37 @@ phase_4_luks_encryption() {
         --label "LUKS_ROOT" \
         --key-file "$temp_keyfile_root" \
         "$ROOT_PARTITION" 2>&1 | tee -a "$LOG_FILE"; then
-        
+
         shred -vfz -n 3 "$temp_keyfile_root" 2>/dev/null || rm -f "$temp_keyfile_root"
         log_error "LUKS format failed for root partition"
         return 1
     fi
-    
+
     log_success "LUKS format completed"
-    
+
     # Wait for LUKS metadata to be written
     sync
     sleep 3
     udevadm settle --timeout=10 || true
-    
+
     # Verify LUKS header
     if ! cryptsetup isLuks "$ROOT_PARTITION"; then
         shred -vfz -n 3 "$temp_keyfile_root" 2>/dev/null || rm -f "$temp_keyfile_root"
         log_error "LUKS header verification failed"
         return 1
     fi
-    
+
     log_success "LUKS header verified"
     log_info "LUKS header information:"
     cryptsetup luksDump "$ROOT_PARTITION" 2>&1 | head -15 | tee -a "$LOG_FILE"
-    
+
     log_info "Opening encrypted root volume..."
-    
+
     # CRITICAL FIX: Use keyfile instead of pipe
     if ! cryptsetup luksOpen \
         --key-file "$temp_keyfile_root" \
         "$ROOT_PARTITION" "$LUKS_ROOT_NAME" 2>&1 | tee -a "$LOG_FILE"; then
-        
+
         shred -vfz -n 3 "$temp_keyfile_root" 2>/dev/null || rm -f "$temp_keyfile_root"
         log_error "Failed to open LUKS root volume"
         log_info "Diagnostic information:"
@@ -1252,43 +1252,43 @@ phase_4_luks_encryption() {
         ls -la /dev/mapper/ | tee -a "$LOG_FILE"
         return 1
     fi
-    
+
     # Securely delete keyfile
     shred -vfz -n 3 "$temp_keyfile_root" 2>/dev/null || rm -f "$temp_keyfile_root"
-    
+
     sleep 1
     udevadm settle --timeout=10 || true
-    
+
     if [[ ! -b "/dev/mapper/$LUKS_ROOT_NAME" ]]; then
         log_error "Encrypted root device /dev/mapper/$LUKS_ROOT_NAME not found"
         ls -la /dev/mapper/ | tee -a "$LOG_FILE"
         return 1
     fi
-    
+
     log_success "Root partition encrypted and opened successfully"
     log_success "Mapped device: /dev/mapper/$LUKS_ROOT_NAME"
-    
+
     sleep 2
     udevadm settle --timeout=10 || true
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # FINAL VERIFICATION
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     log_info "Verifying encrypted volume..."
     ls -la /dev/mapper/ | tee -a "$LOG_FILE"
-    
-    log_info "LUKS status summary:"
-    log_info "  Root: $ROOT_PARTITION → /dev/mapper/$LUKS_ROOT_NAME"
-    log_info "  Encryption: ✓"
 
-    # ═══════════════════════════════════════════════════════════
+    log_info "LUKS status summary:"
+    log_info "  Root: $ROOT_PARTITION â†’ /dev/mapper/$LUKS_ROOT_NAME"
+    log_info "  Encryption: âœ“"
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # LUKS PASSPHRASE SELF-TEST (NON-INTERACTIVE)
     # Verify that the passphrase captured in luks_passphrase
     # actually unlocks the new LUKS header. This avoids a second
     # manual re-typing step and removes human input errors from
     # the verification.
-    # ═══════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     log_info "Running LUKS passphrase self-test for $ROOT_PARTITION (non-interactive)..."
 
@@ -1315,53 +1315,53 @@ phase_4_luks_encryption() {
 phase_5_btrfs_filesystem() {
     tui_phase_start "5" "BTRFS Filesystem" "Creating BTRFS filesystem and subvolumes"
     log_section "PHASE 5: BTRFS FILESYSTEM SETUP"
-    
+
     local root_crypt_device="/dev/mapper/$LUKS_ROOT_NAME"
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # CREATE BTRFS FILESYSTEM
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     log_info "Creating BTRFS filesystem on encrypted root volume..."
     execute_cmd "mkfs.btrfs -f -L root_encrypted $root_crypt_device" \
         "Formatting $root_crypt_device with BTRFS" true
-    
+
     log_info "Mounting BTRFS root (temporary)..."
     mkdir -p "$MOUNT_ROOT"
     execute_cmd "mount $root_crypt_device $MOUNT_ROOT" "Mounting BTRFS root" true
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # CREATE SUBVOLUMES
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     log_info "Creating BTRFS subvolume hierarchy..."
-    
+
     execute_cmd "btrfs subvolume create $MOUNT_ROOT/@" "Creating @ (root) subvolume" true
     execute_cmd "btrfs subvolume create $MOUNT_ROOT/@home" "Creating @home subvolume" true
     execute_cmd "btrfs subvolume create $MOUNT_ROOT/@var" "Creating @var subvolume" true
     execute_cmd "btrfs subvolume create $MOUNT_ROOT/@snapshots" "Creating @snapshots subvolume" true
     execute_cmd "btrfs subvolume create $MOUNT_ROOT/@varcache" "Creating @varcache subvolume" true
-    
+
     if [[ "$ADD_LOG_SUBVOLUME" == "true" ]]; then
         execute_cmd "btrfs subvolume create $MOUNT_ROOT/@log" "Creating @log subvolume (for journal)" true
         log_success "@log subvolume created for systemd journal"
     fi
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # PREPARE FOR REMOUNTING
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     log_info "Remounting with optimized mount options..."
     execute_cmd "umount $MOUNT_ROOT" "Unmounting temporary mount" true
-    
+
     # Directories will be created AFTER mounting root subvolume
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # MOUNT SUBVOLUMES (WITH PROPER QUOTING)
     # Use single quotes around subvolume names to prevent
     # shell interpretation of special characters (@, -, etc)
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     # Mount root (@) with security flags
     log_info "Mounting @ (root) subvolume..."
     mkdir -p "$MOUNT_ROOT"
@@ -1374,14 +1374,14 @@ phase_5_btrfs_filesystem() {
         return 1
     fi
     log_success "@ subvolume mounted at $MOUNT_ROOT"
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # CREATE MOUNT POINT DIRECTORIES (AFTER MOUNTING ROOT)
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     log_info "Creating mount point directories..."
     mkdir -p "$MOUNT_ROOT"/{home,var,.snapshots,boot}
-    
+
     # Mount home (@home)
     log_info "Mounting @home subvolume..."
     if ! mount -o "subvol=@home,compress=zstd,noatime,space_cache=v2" \
@@ -1391,7 +1391,7 @@ phase_5_btrfs_filesystem() {
         return 1
     fi
     log_success "@home subvolume mounted at $MOUNT_ROOT/home"
-    
+
     # Mount var (@var)
     log_info "Mounting @var subvolume..."
     if ! mount -o "subvol=@var,compress=zstd,noatime,space_cache=v2,nodev,nosuid" \
@@ -1401,13 +1401,13 @@ phase_5_btrfs_filesystem() {
         return 1
     fi
     log_success "@var subvolume mounted at $MOUNT_ROOT/var"
-    
+
     # Create nested directories inside @var
     mkdir -p "$MOUNT_ROOT/var/cache"
     if [[ "$ADD_LOG_SUBVOLUME" == "true" ]]; then
         mkdir -p "$MOUNT_ROOT/var/log"
     fi
-    
+
     # Mount varcache (@varcache)
     log_info "Mounting @varcache subvolume..."
     if ! mount -o "subvol=@varcache,compress=zstd,noatime,space_cache=v2,nodev,nosuid" \
@@ -1417,7 +1417,7 @@ phase_5_btrfs_filesystem() {
         return 1
     fi
     log_success "@varcache subvolume mounted at $MOUNT_ROOT/var/cache"
-    
+
     # Mount snapshots (@snapshots)
     log_info "Mounting @snapshots subvolume..."
     if ! mount -o "subvol=@snapshots,compress=zstd,noatime,space_cache=v2,nodev,nosuid" \
@@ -1427,7 +1427,7 @@ phase_5_btrfs_filesystem() {
         return 1
     fi
     log_success "@snapshots subvolume mounted at $MOUNT_ROOT/.snapshots"
-    
+
     # Mount log (@log) - ONLY if ADD_LOG_SUBVOLUME is true
     if [[ "$ADD_LOG_SUBVOLUME" == "true" ]]; then
         log_info "Mounting @log subvolume..."
@@ -1440,7 +1440,7 @@ phase_5_btrfs_filesystem() {
         fi
         log_success "@log subvolume mounted at $MOUNT_ROOT/var/log"
     fi
-    
+
     # Mount EFI partition
     log_info "Mounting EFI System Partition..."
     if ! mount "$BOOT_PARTITION" "$MOUNT_ROOT/boot" >> "$LOG_FILE" 2>&1; then
@@ -1448,16 +1448,16 @@ phase_5_btrfs_filesystem() {
         return 1
     fi
     log_success "EFI partition mounted at $MOUNT_ROOT/boot"
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # VERIFY MOUNT CONFIGURATION
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     log_info "Verifying BTRFS mount configuration..."
     mount | grep "$MOUNT_ROOT" | tee -a "$LOG_FILE"
-    
+
     log_success "BTRFS subvolume hierarchy created and mounted"
-    
+
     save_state "MOUNT_ROOT" "$MOUNT_ROOT"
     save_state "BTRFS_MOUNTED" "true"
     log_success "Phase 5 completed successfully"
@@ -1466,25 +1466,25 @@ phase_5_btrfs_filesystem() {
 phase_6_base_installation() {
     tui_phase_start "6" "Base Installation" "Installing core Arch Linux system (this may take 5-15 minutes)"
     log_section "PHASE 6: BASE SYSTEM INSTALLATION (PACSTRAP)"
-    
+
     log_info "Updating Pacman keyring..."
     execute_cmd_retry "pacman-key --init" "Initializing pacman keyring" 2
     execute_cmd_retry "pacman-key --populate archlinux" "Populating archlinux keyring" 2
-    
+
     log_info "Syncing package database..."
     execute_cmd_retry "pacman -Sy" "Syncing package database" 2
-    
+
     local free_space
     free_space=$(df "$MOUNT_ROOT" | awk 'NR==2 {print $4}')
     local free_gb=$((free_space / 1024 / 1024))
-    
+
     if [[ $free_gb -lt 30 ]]; then
         log_error "Insufficient disk space for base installation ($free_gb GB available, need 30GB)"
         return 1
     fi
-    
+
     log_info "Available space for installation: ${free_gb}GB"
-    
+
     local packages=(
         "base" "linux-zen" "linux-zen-headers" "linux-lts" "linux-lts-headers"
         "mkinitcpio"
@@ -1504,16 +1504,16 @@ phase_6_base_installation() {
         "noto-fonts" "noto-fonts-emoji"
         "picom"
     )
-    
+
     if [[ "$ENABLE_NVIDIA_GPU" == "true" ]]; then
         packages+=("nvidia" "nvidia-utils")
     fi
-    
+
     local packages_str
     packages_str=$(IFS=' '; echo "${packages[*]}")
-    
+
     log_info "Installing base packages via pacstrap (${#packages[@]} packages)..."
-    
+
     if [[ "$TUI_AVAILABLE" == "true" ]]; then
         tui_info "PARSS - Base Installation" "Installing base system (${#packages[@]} packages)\n\nThis will take 5-15 minutes depending on network speed.\n\nPackages include: linux, grub, btrfs-progs,\nnetworkmanager, xorg, and more..."
     fi
@@ -1523,7 +1523,7 @@ phase_6_base_installation() {
         log_error "Pacstrap installation failed"
         return 1
     fi
-    
+
     log_success "Base system installation completed"
     save_state "BASE_INSTALLED" "true"
     log_success "Phase 6 completed successfully"
@@ -1532,25 +1532,25 @@ phase_6_base_installation() {
 phase_7_mount_configuration() {
     tui_phase_start "7" "Mount Configuration" "Configuring fstab and crypttab"
     log_section "PHASE 7: MOUNT & CRYPTTAB CONFIGURATION & ENCRYPTION"
-    
+
     log_info "Generating fstab from current mounts..."
     execute_cmd "genfstab -U $MOUNT_ROOT >> $MOUNT_ROOT/etc/fstab" "Generating fstab" true
-    
+
     log_info "Generated fstab:"
     cat "$MOUNT_ROOT/etc/fstab" | tee -a "$LOG_FILE"
-    
+
     log_info "Configuring crypttab for encrypted root volume..."
-    
+
     local root_partuuid
     root_partuuid=$(blkid -s PARTUUID -o value "$ROOT_PARTITION")
-    
+
     cat > "$MOUNT_ROOT/etc/crypttab" << EOF
 $LUKS_ROOT_NAME	PARTUUID=$root_partuuid	none	luks,x-systemd.device-timeout=10
 EOF
-    
+
     log_info "crypttab configuration (single encrypted root with all BTRFS subvolumes):"
     cat "$MOUNT_ROOT/etc/crypttab" | tee -a "$LOG_FILE"
-    
+
     save_state "FSTAB_GENERATED" "true"
     log_success "Phase 7 completed successfully"
 }
@@ -1562,33 +1562,33 @@ EOF
 phase_8_chroot_configuration() {
     tui_phase_start "8" "Bootloader Setup" "Configuring mkinitcpio and GRUB"
     log_section "PHASE 8: CHROOT ENVIRONMENT & BOOTLOADER"
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # CONFIGURE MKINITCPIO
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     log_info "Configuring mkinitcpio for encrypted root..."
-    
+
     local mkinitcpio_conf="$MOUNT_ROOT/etc/mkinitcpio.conf"
-    
+
     # Backup original
     cp "$mkinitcpio_conf" "${mkinitcpio_conf}.bak"
-    
+
     # Update MODULES - only btrfs needed (dm_crypt auto-loaded by encrypt hook)
     sed -i 's/^MODULES=.*/MODULES=(btrfs)/' "$mkinitcpio_conf"
-    
+
     # Update HOOKS - traditional encrypt hook with proper order
     sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf kms keyboard keymap consolefont block encrypt filesystems fsck)/' "$mkinitcpio_conf"
-    
+
     log_info "Updated mkinitcpio configuration:"
     grep -E "^(MODULES|HOOKS)" "$mkinitcpio_conf" | tee -a "$LOG_FILE"
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # GENERATE INITRAMFS FOR ALL INSTALLED KERNELS
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     log_info "Generating initramfs for all installed kernels (mkinitcpio -P)..."
-    
+
     # METHOD 1: Try arch-chroot (recommended, handles environment setup)
     if arch-chroot "$MOUNT_ROOT" mkinitcpio -P 2>&1 | tee -a "$LOG_FILE"; then
         log_success "Initramfs generated via arch-chroot"
@@ -1596,7 +1596,7 @@ phase_8_chroot_configuration() {
         local arch_chroot_exit=$?
         log_warn "arch-chroot mkinitcpio failed (exit code: $arch_chroot_exit)"
         log_info "Attempting fallback method with /bin/sh..."
-        
+
         # METHOD 2: Fallback - use chroot directly with /bin/sh
         # This avoids the bash permission issue
         if chroot "$MOUNT_ROOT" /bin/sh -c "mkinitcpio -P" 2>&1 | tee -a "$LOG_FILE"; then
@@ -1608,11 +1608,11 @@ phase_8_chroot_configuration() {
             return 1
         fi
     fi
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # VERIFY INITRAMFS FOR PRIMARY KERNEL (linux-zen)
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     if [[ ! -f "$MOUNT_ROOT/boot/initramfs-linux-zen.img" ]]; then
         log_error "initramfs-linux-zen.img not found after mkinitcpio"
         log_error "Expected location: $MOUNT_ROOT/boot/initramfs-linux-zen.img"
@@ -1620,52 +1620,52 @@ phase_8_chroot_configuration() {
         ls -la "$MOUNT_ROOT/boot/" | tee -a "$LOG_FILE"
         return 1
     fi
-    
+
     local initramfs_size
     initramfs_size=$(stat -c%s "$MOUNT_ROOT/boot/initramfs-linux-zen.img")
     log_success "Initramfs file for linux-zen verified (size: ${initramfs_size} bytes)"
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # INSTALL GRUB BOOTLOADER
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     log_info "Installing GRUB to EFI partition..."
     if [[ "$TUI_AVAILABLE" == "true" ]]; then
         tui_info "PARSS - GRUB Installation" "Installing GRUB bootloader...\n\nTarget: x86_64-efi\nLocation: /boot\nBootloader ID: ArchLinux"
     fi
-    
+
     arch-chroot "$MOUNT_ROOT" grub-install \
         --target=x86_64-efi \
         --efi-directory=/boot \
         --bootloader-id=ArchLinux \
         --recheck 2>&1 | tee -a "$LOG_FILE"
-    
+
     if [[ $? -ne 0 ]]; then
         log_error "GRUB installation failed"
         return 1
     fi
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # CONFIGURE GRUB FOR ENCRYPTED ROOT
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     log_info "Configuring GRUB kernel parameters for encrypted root..."
-    
+
     local grub_default="$MOUNT_ROOT/etc/default/grub"
     local root_uuid
     root_uuid=$(blkid -s UUID -o value "$ROOT_PARTITION")
-    
+
     if [[ -z "$root_uuid" ]]; then
         log_error "Could not retrieve UUID for $ROOT_PARTITION"
         return 1
     fi
-    
+
     log_debug "Root partition UUID: $root_uuid"
-    
+
     # Set GRUB kernel command line with LUKS parameters
     # cryptdevice=UUID:mapper_name (traditional encrypt hook format)
     sed -i "/^GRUB_CMDLINE_LINUX=/c\GRUB_CMDLINE_LINUX=\"cryptdevice=UUID=${root_uuid}:${LUKS_ROOT_NAME} root=/dev/mapper/${LUKS_ROOT_NAME} quiet\"" "$grub_default"
-    
+
     # Enable cryptodisk support in GRUB
     echo "GRUB_ENABLE_CRYPTODISK=y" >> "$grub_default"
 
@@ -1682,7 +1682,7 @@ phase_8_chroot_configuration() {
     else
         echo 'GRUB_DISABLE_OS_PROBER=false' >> "$grub_default"
     fi
-    
+
     # Configure GRUB menu timeout and visibility
     # GRUB_TIMEOUT: seconds to show menu (5 seconds)
     # GRUB_TIMEOUT_STYLE: 'menu' ensures menu is always visible
@@ -1691,13 +1691,13 @@ phase_8_chroot_configuration() {
     else
         echo 'GRUB_TIMEOUT=5' >> "$grub_default"
     fi
-    
+
     if grep -q 'GRUB_TIMEOUT_STYLE=' "$grub_default"; then
         sed -i 's/^#\?GRUB_TIMEOUT_STYLE=.*/GRUB_TIMEOUT_STYLE=menu/' "$grub_default"
     else
         echo 'GRUB_TIMEOUT_STYLE=menu' >> "$grub_default"
     fi
-    
+
     # Enable detection of ALL bootable devices (USB, CD, HDD, SSD, etc.)
     # GRUB_DISABLE_SUBMENU: Show all entries in main menu instead of submenus
     if grep -q 'GRUB_DISABLE_SUBMENU=' "$grub_default"; then
@@ -1705,17 +1705,17 @@ phase_8_chroot_configuration() {
     else
         echo 'GRUB_DISABLE_SUBMENU=y' >> "$grub_default"
     fi
-    
+
     log_info "Updated GRUB configuration:"
     grep -E "^(GRUB_CMDLINE_LINUX|GRUB_ENABLE_CRYPTODISK|GRUB_DISTRIBUTOR|GRUB_DISABLE_OS_PROBER|GRUB_TIMEOUT)" "$grub_default" | tee -a "$LOG_FILE"
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # RUN OS-PROBER TO DETECT OTHER OPERATING SYSTEMS
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     log_info "Running os-prober to detect other operating systems and drives..."
     log_info "This will scan all available partitions..."
-    
+
     # Mount all partitions so os-prober can detect them
     arch-chroot "$MOUNT_ROOT" bash -c "
         # Try to mount all unmounted partitions temporarily
@@ -1728,39 +1728,39 @@ phase_8_chroot_configuration() {
             mount -o ro \"\$dev\" /mnt/probe\${dev##*/} 2>/dev/null || true
         done
     " 2>/dev/null || true
-    
+
     # Run os-prober to scan for other OSes
     arch-chroot "$MOUNT_ROOT" os-prober 2>&1 | tee -a "$LOG_FILE" || log_warn "os-prober found no other operating systems"
-    
+
     # Unmount probe mounts
     arch-chroot "$MOUNT_ROOT" bash -c "
         for mnt in /mnt/probe*; do
             [[ -d \"\$mnt\" ]] && umount \"\$mnt\" 2>/dev/null && rmdir \"\$mnt\" 2>/dev/null || true
         done
     " 2>/dev/null || true
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # GENERATE GRUB CONFIGURATION
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     log_info "Generating GRUB menu configuration..."
-    
+
     if ! arch-chroot "$MOUNT_ROOT" grub-mkconfig -o /boot/grub/grub.cfg 2>&1 | tee -a "$LOG_FILE"; then
         log_error "GRUB configuration generation failed"
         return 1
     fi
-    
+
     log_success "GRUB configuration generated successfully"
-    
-    # ═══════════════════════════════════════════════════════════
+
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # VERIFY GRUB CONFIGURATION
-    # ═══════════════════════════════════════════════════════════
-    
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     if [[ ! -f "$MOUNT_ROOT/boot/grub/grub.cfg" ]]; then
         log_error "GRUB configuration file not found"
         return 1
     fi
-    
+
     # Verify cryptdevice parameter is in grub.cfg
     if ! grep -q "cryptdevice=" "$MOUNT_ROOT/boot/grub/grub.cfg"; then
         log_warn "cryptdevice parameter not found in grub.cfg"
@@ -1768,7 +1768,7 @@ phase_8_chroot_configuration() {
     else
         log_success "cryptdevice parameter verified in grub.cfg"
     fi
-    
+
     log_success "GRUB bootloader configured successfully"
     save_state "GRUB_INSTALLED" "true"
     log_success "Phase 8 completed successfully"
@@ -1777,39 +1777,39 @@ phase_8_chroot_configuration() {
 phase_9_system_configuration() {
     tui_phase_start "9" "System Configuration" "Setting hostname, locale, timezone, and networking"
     log_section "PHASE 9: SYSTEM CONFIGURATION"
-    
+
     log_info "Configuring hostname..."
-    
+
     echo "$HOSTNAME_SYS" > "$MOUNT_ROOT/etc/hostname"
-    
+
     cat > "$MOUNT_ROOT/etc/hosts" << EOF
 127.0.0.1       localhost
 ::1             localhost ip6-localhost ip6-loopback
 127.0.1.1       $HOSTNAME_SYS.localdomain $HOSTNAME_SYS
 EOF
-    
+
     log_success "Hostname set to: $HOSTNAME_SYS"
     save_state "HOSTNAME_SYS" "$HOSTNAME_SYS"
-    
+
     log_info "Setting timezone to $SYSTEM_TIMEZONE..."
     arch-chroot "$MOUNT_ROOT" ln -sf /usr/share/zoneinfo/"$SYSTEM_TIMEZONE" /etc/localtime
     arch-chroot "$MOUNT_ROOT" hwclock --systohc
-    
+
     log_info "Configuring locale (en_US.UTF-8)..."
     echo "en_US.UTF-8 UTF-8" > "$MOUNT_ROOT/etc/locale.gen"
     arch-chroot "$MOUNT_ROOT" locale-gen
     echo "LANG=en_US.UTF-8" > "$MOUNT_ROOT/etc/locale.conf"
-    
+
     log_info "Enabling essential system services..."
-    
+
     # NetworkManager - Network connectivity
     log_info "Enabling NetworkManager..."
     arch-chroot "$MOUNT_ROOT" systemctl enable NetworkManager
-    
+
     # SSH - Remote access
     log_info "Enabling SSH service..."
     arch-chroot "$MOUNT_ROOT" systemctl enable sshd
-    
+
     # Configure SSH to allow root login with password (for development/testing)
     # For production, consider using key-based authentication only
     if [[ -f "$MOUNT_ROOT/etc/ssh/sshd_config" ]]; then
@@ -1822,30 +1822,30 @@ EOF
     else
         log_warn "SSH config file not found, skipping SSH configuration"
     fi
-    
+
     # systemd-timesyncd - NTP time synchronization
     log_info "Enabling time synchronization (systemd-timesyncd)..."
     arch-chroot "$MOUNT_ROOT" systemctl enable systemd-timesyncd
-    
+
     # fstrim.timer - SSD TRIM support (weekly automatic TRIM)
     log_info "Enabling SSD TRIM timer (fstrim.timer)..."
     arch-chroot "$MOUNT_ROOT" systemctl enable fstrim.timer
-    
+
     # systemd-resolved - DNS resolver (optional, NetworkManager can handle DNS)
     # Uncomment if you want systemd-resolved instead of NetworkManager's DNS
     # log_info "Enabling systemd-resolved..."
     # arch-chroot "$MOUNT_ROOT" systemctl enable systemd-resolved
-    
+
     log_success "Essential system services enabled"
-    
+
     log_info "Configuring sudo access..."
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' "$MOUNT_ROOT/etc/sudoers"
-    
+
     if ! arch-chroot "$MOUNT_ROOT" visudo -c 2>&1 | grep -q "parsed OK"; then
         log_error "sudoers configuration validation failed"
         return 1
     fi
-    
+
     log_success "System configuration completed"
     save_state "SYSTEM_CONFIGURED" "true"
     log_success "Phase 9 completed successfully"
@@ -1854,16 +1854,16 @@ EOF
 phase_10_user_setup() {
     tui_phase_start "10" "User Setup" "Creating user account and setting passwords"
     log_section "PHASE 10: USER ACCOUNT SETUP"
-    
+
     log_info "Creating primary user account: $PRIMARY_USER"
-    
+
     if arch-chroot "$MOUNT_ROOT" bash -c "useradd -m -G wheel -s /usr/bin/zsh $PRIMARY_USER" 2>&1 | tee -a "$LOG_FILE"; then
         log_success "User account created: $PRIMARY_USER"
     else
         log_error "Failed to create user account"
         return 1
     fi
-    
+
     log_info "Setting password for $PRIMARY_USER..."
     local user_password
     while true; do
@@ -1878,10 +1878,10 @@ phase_10_user_setup() {
             log_warn "Passwords do not match. Try again."
         fi
     done
-    
+
     echo "$PRIMARY_USER:$user_password" | arch-chroot "$MOUNT_ROOT" chpasswd
     log_success "Password set for $PRIMARY_USER"
-    
+
     log_info "Setting root password..."
     local root_password
     while true; do
@@ -1896,21 +1896,21 @@ phase_10_user_setup() {
             log_warn "Passwords do not match. Try again."
         fi
     done
-    
+
     echo "root:$root_password" | arch-chroot "$MOUNT_ROOT" chpasswd
     log_success "Root password set successfully"
-    
+
     # Clear password variables from memory
     unset user_password user_password_confirm root_password root_password_confirm
-    
+
     log_info "Verifying sudo configuration for $PRIMARY_USER..."
-    
+
     if arch-chroot "$MOUNT_ROOT" sudo -u "$PRIMARY_USER" -n true 2>/dev/null; then
         log_warn "User has passwordless sudo (verify if intentional)"
     else
         log_info "User requires password for sudo (expected)"
     fi
-    
+
     save_state "PRIMARY_USER" "$PRIMARY_USER"
     log_success "User setup completed"
     log_success "Phase 10 completed successfully"
@@ -1919,9 +1919,9 @@ phase_10_user_setup() {
 phase_11_security_hardening() {
     tui_phase_start "11" "Security Hardening" "Applying kernel parameters and sysctl tuning"
     log_section "PHASE 11: SECURITY HARDENING"
-    
+
     log_info "Creating security-hardened sysctl parameters..."
-    
+
     cat > "$MOUNT_ROOT/etc/sysctl.d/99-hardening.conf" << 'SYSCTL_CONFIG'
 # Security-hardened kernel parameters for research environment
 kernel.dmesg_restrict = 1
@@ -1935,9 +1935,9 @@ fs.protected_regular = 2
 fs.protected_symlinks = 1
 fs.protected_hardlinks = 1
 SYSCTL_CONFIG
-    
+
     log_success "Sysctl hardening configuration created"
-    
+
     save_state "HARDENING_APPLIED" "true"
     log_success "Phase 11 completed successfully"
 }
@@ -1945,9 +1945,9 @@ SYSCTL_CONFIG
 phase_12_snapshot_automation() {
     tui_phase_start "12" "Snapshot Automation" "Setting up automatic BTRFS snapshots"
     log_section "PHASE 12: BTRFS SNAPSHOT AUTOMATION"
-    
+
     log_info "Creating BTRFS snapshot automation script..."
-    
+
     cat > "$MOUNT_ROOT/usr/local/bin/btrfs-snapshot-weekly.sh" << 'SNAP_SCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -1965,11 +1965,11 @@ log_snapshot "Starting weekly snapshot process"
 for subvol in "@" "@home"; do
     snapshot_name="${subvol}-snapshot-${TIMESTAMP}"
     snapshot_path="$SNAPSHOT_DIR/$snapshot_name"
-    
+
     if btrfs subvolume snapshot -r "/${subvol#@}" "$snapshot_path" 2>/dev/null; then
-        log_snapshot "✓ Snapshot created: $snapshot_name"
+        log_snapshot "âœ“ Snapshot created: $snapshot_name"
     else
-        log_snapshot "✗ Failed to create snapshot: $snapshot_name"
+        log_snapshot "âœ— Failed to create snapshot: $snapshot_name"
     fi
 done
 
@@ -1978,7 +1978,7 @@ current_count=$(btrfs subvolume list "$SNAPSHOT_DIR" 2>/dev/null | wc -l || echo
 
 if [[ $current_count -gt $max_snapshots ]]; then
     log_snapshot "Snapshot count ($current_count) exceeds limit, cleaning up..."
-    
+
     btrfs subvolume list "$SNAPSHOT_DIR" 2>/dev/null | \
         awk '{print $NF}' | sort | head -n $((current_count - max_snapshots)) | \
         while read -r snap; do
@@ -1990,10 +1990,10 @@ fi
 
 log_snapshot "Weekly snapshot process completed"
 SNAP_SCRIPT
-    
+
     sed -i "s/SNAPSHOT_RETENTION_PLACEHOLDER/$SNAPSHOT_RETENTION/" "$MOUNT_ROOT/usr/local/bin/btrfs-snapshot-weekly.sh"
     chmod +x "$MOUNT_ROOT/usr/local/bin/btrfs-snapshot-weekly.sh"
-    
+
     cat > "$MOUNT_ROOT/etc/systemd/system/btrfs-snapshot-weekly.service" << 'SERVICE'
 [Unit]
 Description=Weekly BTRFS Snapshot Service
@@ -2009,7 +2009,7 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 SERVICE
-    
+
     cat > "$MOUNT_ROOT/etc/systemd/system/btrfs-snapshot-weekly.timer" << 'TIMER'
 [Unit]
 Description=Weekly BTRFS Snapshot Timer
@@ -2024,10 +2024,10 @@ Unit=btrfs-snapshot-weekly.service
 [Install]
 WantedBy=timers.target
 TIMER
-    
+
     arch-chroot "$MOUNT_ROOT" systemctl daemon-reload
     arch-chroot "$MOUNT_ROOT" systemctl enable btrfs-snapshot-weekly.timer
-    
+
     log_success "BTRFS snapshot automation configured"
     save_state "SNAPSHOTS_CONFIGURED" "true"
     log_success "Phase 12 completed successfully"
@@ -2035,32 +2035,32 @@ TIMER
 
 phase_14_optional_desktop_setup() {
     # Show TUI or text-based prompt
-    local prompt_message="🎉 Congratulations! Your secure base system is ready!
+    local prompt_message="ðŸŽ‰ Congratulations! Your secure base system is ready!
 
 The next step is OPTIONAL but RECOMMENDED:
 Install complete desktop environment (DWM + Dotfiles)
 
-📦 WHAT WILL BE INSTALLED:
-  • archrice dotfiles (personal configs)
-  • yay AUR helper (for AUR packages)
-  • DWM window manager (lightweight, keyboard-driven)
-  • ST terminal, dmenu, dwmblocks
-  • Moonfly OLED theme (optimized for OLED displays)
-  • ~60 packages from progs.csv
-  • Librewolf browser + extensions
-  • Development tools (neovim, git, etc.)
+ðŸ“¦ WHAT WILL BE INSTALLED:
+  â€¢ archrice dotfiles (personal configs)
+  â€¢ yay AUR helper (for AUR packages)
+  â€¢ DWM window manager (lightweight, keyboard-driven)
+  â€¢ ST terminal, dmenu, dwmblocks
+  â€¢ Moonfly OLED theme (optimized for OLED displays)
+  â€¢ ~60 packages from progs.csv
+  â€¢ Librewolf browser + extensions
+  â€¢ Development tools (neovim, git, etc.)
 
-⚡ ADVANTAGES:
-  ✓ No reboot needed - continue immediately
-  ✓ Network already configured
-  ✓ Faster testing workflow
-  ✓ Complete system ready in one session
+âš¡ ADVANTAGES:
+  âœ“ No reboot needed - continue immediately
+  âœ“ Network already configured
+  âœ“ Faster testing workflow
+  âœ“ Complete system ready in one session
 
-⏱️  TIME: 10-30 minutes (network dependent)
+â±ï¸  TIME: 10-30 minutes (network dependent)
 
-💡 TIP: Can install later with:
+ðŸ’¡ TIP: Can install later with:
    sudo bash arch-secure-deploy.sh --phase 14"
-    
+
     # Use TUI if available, otherwise text prompt
     if [[ "$TUI_AVAILABLE" == "true" ]]; then
         if ! tui_yesno "PHASE 14: Desktop Environment" "$prompt_message" 25 78; then
@@ -2073,26 +2073,26 @@ Install complete desktop environment (DWM + Dotfiles)
         # Fallback to text-based prompt
         echo ""
         echo ""
-        echo "╔═══════════════════════════════════════════════════════════════════════════════╗"
-        echo "║                                                                               ║"
-        echo "║                    🎨  DESKTOP ENVIRONMENT INSTALLATION  🎨                   ║"
-        echo "║                                                                               ║"
-        echo "║                              ⚡ PHASE 14 ⚡                                    ║"
-        echo "║                                                                               ║"
-        echo "╚═══════════════════════════════════════════════════════════════════════════════╝"
+        echo "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—"
+        echo "â•‘                                                                               â•‘"
+        echo "â•‘                    ðŸŽ¨  DESKTOP ENVIRONMENT INSTALLATION  ðŸŽ¨                   â•‘"
+        echo "â•‘                                                                               â•‘"
+        echo "â•‘                              âš¡ PHASE 14 âš¡                                    â•‘"
+        echo "â•‘                                                                               â•‘"
+        echo "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
         echo ""
         echo "$prompt_message"
         echo ""
-        echo "╔═══════════════════════════════════════════════════════════════════════════════╗"
-        echo "║                                                                               ║"
-        echo "║                     INSTALL DESKTOP ENVIRONMENT NOW?                          ║"
-        echo "║                                                                               ║"
-        echo "╚═══════════════════════════════════════════════════════════════════════════════╝"
+        echo "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—"
+        echo "â•‘                                                                               â•‘"
+        echo "â•‘                     INSTALL DESKTOP ENVIRONMENT NOW?                          â•‘"
+        echo "â•‘                                                                               â•‘"
+        echo "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
         echo ""
-        
+
         local response
-        read -p "  👉 Your choice (y/N): " response
-        
+        read -p "  ðŸ‘‰ Your choice (y/N): " response
+
         if [[ ! "$response" =~ ^[yY]$ ]]; then
             log_info "Skipping desktop environment setup."
             save_state "DESKTOP_SETUP_SKIPPED" "true"
@@ -2100,18 +2100,18 @@ Install complete desktop environment (DWM + Dotfiles)
             return 0
         fi
     fi
-    
+
     log_info "Starting desktop environment installation..."
     save_state "DESKTOP_SETUP_STARTED" "true"
-    
+
     # Desktop setup configuration (like LARBS does it inline)
     local DOTFILES_REPO="https://github.com/yashpatel-01/archrice.git"
     local DOTFILES_DIR="/home/$PRIMARY_USER/.local/src/archrice"
     local PROGS_FILE="$DOTFILES_DIR/progs.csv"
-    
+
     log_info "This may take 10-30 minutes depending on network speed..."
     log_info ""
-    
+
     # Execute desktop setup inline (LARBS-style: all logic in one script)
     arch-chroot "$MOUNT_ROOT" /bin/bash <<DESKTOP_SETUP_EOF
 set -e
@@ -2128,7 +2128,7 @@ info "Configuring temporary passwordless sudo for AUR builds..."
 trap 'rm -f /etc/sudoers.d/parss-temp' HUP INT QUIT TERM PWR EXIT
 echo "%wheel ALL=(ALL) NOPASSWD: ALL
 Defaults:%wheel,root runcwd=*" >/etc/sudoers.d/parss-temp
-info "✓ Temporary sudo configured (will be removed after setup)"
+info "âœ“ Temporary sudo configured (will be removed after setup)"
 
 # 1. Clone archrice dotfiles
 info "Cloning archrice dotfiles repository..."
@@ -2149,25 +2149,25 @@ if ! command -v yay >/dev/null 2>&1; then
     # Install yay from AUR (same method as LARBS)
     repodir="/home/$PRIMARY_USER/.local/src"
     sudo -u $PRIMARY_USER mkdir -p "\$repodir/yay"
-    
+
     sudo -u $PRIMARY_USER git -C "\$repodir" clone --depth 1 --single-branch \
         --no-tags -q "https://aur.archlinux.org/yay.git" "\$repodir/yay" || {
         cd "\$repodir/yay" || exit 1
         sudo -u $PRIMARY_USER git pull --force origin master
     }
-    
+
     cd "\$repodir/yay" || exit 1
     sudo -u $PRIMARY_USER makepkg --noconfirm -si >/dev/null 2>&1 || {
         warn "Failed to install yay"
         exit 1
     }
-    
+
     # Configure yay for auto-updates of *-git packages (LARBS does this)
     sudo -u $PRIMARY_USER yay -Y --save --devel >/dev/null 2>&1
-    
-    info "✓ yay installed"
+
+    info "âœ“ yay installed"
 else
-    info "✓ yay already installed"
+    info "âœ“ yay already installed"
 fi
 
 # 3. Install packages from progs.csv
@@ -2181,14 +2181,14 @@ else
     total=\$(grep -c "^[^#]" "$PROGS_FILE" 2>/dev/null || echo 0)
     n=0
     info "Installing \$total packages from progs.csv..."
-    
+
     while IFS=, read -r tag prog comment; do
         # Skip comments and blank lines
         [[ -z "\${tag}\${prog}" ]] && continue
         [[ "\$tag" =~ ^# ]] && continue
-        
+
         n=\$((n + 1))
-        
+
         case "\$tag" in
             "" )
                 # Show progress in TUI or console
@@ -2210,7 +2210,7 @@ else
                 name="\${prog##*/}"
                 name="\${name%.git}"
                 dir="\$repodir/\$name"
-                
+
                 if [[ -d "\$dir/.git" ]]; then
                     sudo -u $PRIMARY_USER git -C "\$dir" pull --ff-only >/dev/null 2>&1 || warn "Using existing: \$prog"
                 else
@@ -2219,7 +2219,7 @@ else
                         continue
                     }
                 fi
-                
+
                 (cd "\$dir" && sudo -u $PRIMARY_USER make >/dev/null 2>&1 && make install >/dev/null 2>&1) || warn "Build failed: \$prog"
                 ;;
             "A" )
@@ -2240,9 +2240,9 @@ else
                 ;;
         esac
     done < "$PROGS_FILE"
-    
+
     info ""
-    info "✓ Package installation complete (\$n packages processed)"
+    info "âœ“ Package installation complete (\$n packages processed)"
 fi
 
 # 4. Deploy dotfiles
@@ -2263,7 +2263,7 @@ chmod +x /home/$PRIMARY_USER/.local/bin/* 2>/dev/null || true
 # Set OLED black wallpaper using existing file from dotfiles
 if [[ -f "/home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png" ]]; then
     sudo -u $PRIMARY_USER ln -sf /home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png /home/$PRIMARY_USER/.local/share/bg
-    info "✓ OLED black wallpaper set"
+    info "âœ“ OLED black wallpaper set"
 fi
 
 # Auto-detect screen resolution and set DPI in Xresources
@@ -2280,7 +2280,7 @@ xresources="/home/$PRIMARY_USER/.config/x11/xresources"
 if [[ -f "\$xresources" ]]; then
     sed -i "s/^! Xft.dpi:.*/Xft.dpi: \$dpi/" "\$xresources"
     sed -i "s/^Xft.dpi:.*/Xft.dpi: \$dpi/" "\$xresources"
-    info "✓ DPI set to \$dpi (detected \$resolution)"
+    info "âœ“ DPI set to \$dpi (detected \$resolution)"
 fi
 
 # Remove DWM gaps for OLED displays (edge-to-edge windows)
@@ -2291,33 +2291,33 @@ if [[ -f "\$dwm_config" ]]; then
     sed -i 's/^static const unsigned int gappoh.*/static const unsigned int gappoh = 0;/' "\$dwm_config"
     sed -i 's/^static const unsigned int gappov.*/static const unsigned int gappov = 0;/' "\$dwm_config"
     cd "/home/$PRIMARY_USER/.local/src/dwm"
-    sudo -u $PRIMARY_USER make >/dev/null 2>&1 && make install >/dev/null 2>&1 && info "✓ DWM gaps removed"
+    sudo -u $PRIMARY_USER make >/dev/null 2>&1 && make install >/dev/null 2>&1 && info "âœ“ DWM gaps removed"
 fi
 
 # Copy configs to root for consistent theme with sudo
 mkdir -p /root/.config 2>/dev/null
-[[ -d "/home/$PRIMARY_USER/.config/nvim" ]] && cp -r "/home/$PRIMARY_USER/.config/nvim" /root/.config/ && info "✓ Root nvim configured"
+[[ -d "/home/$PRIMARY_USER/.config/nvim" ]] && cp -r "/home/$PRIMARY_USER/.config/nvim" /root/.config/ && info "âœ“ Root nvim configured"
 [[ -f "/home/$PRIMARY_USER/.config/x11/xresources" ]] && cp "/home/$PRIMARY_USER/.config/x11/xresources" /root/.Xresources
 
 info ""
 info "OLED/HiDPI Setup Complete:"
-info "  • Moonfly OLED: Pure black #000000 (OLED pixels off)"
-info "  • DPI: \$dpi for \$resolution display"
-info "  • Wallpaper: Black (zero power)"
-info "  • DWM: No gaps (maximize space)"
-info "  • Root/user: Same theme"
+info "  â€¢ Moonfly OLED: Pure black #000000 (OLED pixels off)"
+info "  â€¢ DPI: \$dpi for \$resolution display"
+info "  â€¢ Wallpaper: Black (zero power)"
+info "  â€¢ DWM: No gaps (maximize space)"
+info "  â€¢ Root/user: Same theme"
 info ""
 info "After reboot: login and run 'startx'"
 
 # Cleanup: Remove temporary passwordless sudo
 info "Cleaning up temporary sudo configuration..."
 rm -f /etc/sudoers.d/parss-temp
-info "✓ Temporary sudo removed (security restored)"
+info "âœ“ Temporary sudo removed (security restored)"
 
 DESKTOP_SETUP_EOF
-    
+
     local exit_code=$?
-    
+
     if [[ $exit_code -eq 0 ]]; then
         log_success "Desktop environment setup completed successfully!"
         save_state "DESKTOP_SETUP_COMPLETE" "true"
@@ -2326,35 +2326,35 @@ DESKTOP_SETUP_EOF
         log_warn "Check the log for details."
         save_state "DESKTOP_SETUP_ERROR" "true"
     fi
-    
+
     log_success "Phase 14 completed"
 }
 
 phase_13_final_verification() {
     tui_phase_start "13" "Final Verification" "Verifying installation and unmounting filesystems"
     log_section "PHASE 13: FINAL VERIFICATION & UNMOUNTING"
-    
+
     log_info "Verifying installation completeness..."
-    
+
     log_debug "Checking crypttab..."
     [[ -f "$MOUNT_ROOT/etc/crypttab" ]] && cat "$MOUNT_ROOT/etc/crypttab" | tee -a "$LOG_FILE" || log_warn "crypttab not found"
-    
+
     log_debug "Checking fstab..."
     [[ -f "$MOUNT_ROOT/etc/fstab" ]] && cat "$MOUNT_ROOT/etc/fstab" | tee -a "$LOG_FILE" || log_warn "fstab not found"
-    
+
     log_debug "Checking mkinitcpio configuration..."
     grep -E "^(MODULES|HOOKS)" "$MOUNT_ROOT/etc/mkinitcpio.conf" | tee -a "$LOG_FILE"
-    
+
     log_debug "Checking BTRFS subvolumes..."
     arch-chroot "$MOUNT_ROOT" btrfs subvolume list / 2>/dev/null | tee -a "$LOG_FILE" || log_warn "Could not list subvolumes"
-    
+
     log_debug "Checking total packages installed..."
     local pkg_count
     pkg_count=$(arch-chroot "$MOUNT_ROOT" pacman -Q | wc -l)
     log_info "Total packages installed: $pkg_count"
-    
+
     log_info "Unmounting filesystems (in reverse order)..."
-    
+
     umount -l "$MOUNT_ROOT/var/log" 2>/dev/null || true
     umount -l "$MOUNT_ROOT/var/cache" 2>/dev/null || true
     umount -l "$MOUNT_ROOT/var" 2>/dev/null || true
@@ -2362,10 +2362,10 @@ phase_13_final_verification() {
     umount -l "$MOUNT_ROOT/.snapshots" 2>/dev/null || true
     umount -l "$MOUNT_ROOT/boot" 2>/dev/null || true
     umount -l "$MOUNT_ROOT" 2>/dev/null || true
-    
+
     log_info "Closing LUKS encrypted volume..."
     cryptsetup luksClose "${LUKS_ROOT_NAME}" 2>/dev/null || true
-    
+
     log_success "Installation completed and filesystems unmounted"
     save_state "INSTALLATION_COMPLETE" "true"
     log_success "Phase 13 completed successfully"
@@ -2382,24 +2382,24 @@ Usage: bash arch-secure-deploy.sh [OPTIONS]
 Options:
   --start-from PHASE    Start from a specific phase (1-14)
                         Example: --start-from 14
-  
+
   --phase PHASE         Run only a specific phase
                         Example: --phase 14
-  
+
   --skip-unmount        Skip unmounting in phase 13 (for testing)
-  
+
   --help, -h            Show this help message
 
 Examples:
   # Full installation
   bash arch-secure-deploy.sh
-  
+
   # Test desktop setup only (assumes system is installed and mounted)
   bash arch-secure-deploy.sh --phase 14
-  
+
   # Resume from phase 14
   bash arch-secure-deploy.sh --start-from 14
-  
+
   # Continue installation without unmounting (for iterative testing)
   bash arch-secure-deploy.sh --start-from 10 --skip-unmount
 
@@ -2426,12 +2426,12 @@ EOF
 main() {
     # Initialize TUI if possible
     init_tui
-    
+
     # Parse command-line arguments
     local START_FROM_PHASE=1
     local RUN_ONLY_PHASE=""
     local SKIP_UNMOUNT=false
-    
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --start-from)
@@ -2457,20 +2457,20 @@ main() {
                 ;;
         esac
     done
-    
+
     # Initialize logging
     mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$ERROR_LOG")"
     touch "$LOG_FILE" "$ERROR_LOG"
-    
+
     # Load previous state if exists
     load_state
-    
+
     log_section "ARCH LINUX SECURE RESEARCH DEPLOYMENT - PRODUCTION v2.2"
     log_info "Installation started: $(date)"
     log_info "Log file: $LOG_FILE"
     log_info "Error log: $ERROR_LOG"
     log_info "State file: $STATE_FILE"
-    
+
     if [[ -n "$RUN_ONLY_PHASE" ]]; then
         log_info "Running ONLY phase $RUN_ONLY_PHASE (testing mode)"
         case "$RUN_ONLY_PHASE" in
@@ -2493,11 +2493,11 @@ main() {
         esac
         return 0
     fi
-    
+
     if [[ "$START_FROM_PHASE" != "1" ]]; then
         log_info "Starting from phase $START_FROM_PHASE (skipping earlier phases)"
     fi
-    
+
     # Execute phases (conditionally based on START_FROM_PHASE)
     [[ $START_FROM_PHASE -le 1 ]] && { phase_1_preflight_checks || exit 1; }
     [[ $START_FROM_PHASE -le 1 ]] && { phase_1b_interactive_configuration || exit 1; }
@@ -2514,17 +2514,17 @@ main() {
     [[ $START_FROM_PHASE -le 12 ]] && { phase_12_snapshot_automation || exit 1; }
     [[ $START_FROM_PHASE -le 14 ]] && phase_14_optional_desktop_setup
     [[ $START_FROM_PHASE -le 13 ]] && [[ "$SKIP_UNMOUNT" != "true" ]] && { phase_13_final_verification || exit 1; }
-    
+
     # Completion summary
     log_section "INSTALLATION COMPLETED SUCCESSFULLY"
-    
+
     log_info ""
     log_info "Next steps:"
     log_info "  1. Remove installation media (USB/ISO)"
     log_info "  2. Reboot system: reboot"
     log_info "  3. Enter your LUKS passphrase at boot"
     log_info "  4. Login with user: $PRIMARY_USER"
-    
+
     # Check if desktop was installed (variable is exported by phase_14 via save_state)
     if [[ "${DESKTOP_SETUP_COMPLETE:-false}" == "true" ]]; then
         log_info "  5. Run 'startx' to launch your desktop environment"
@@ -2540,28 +2540,28 @@ main() {
     log_info "  Encryption: Single passphrase for entire system"
     log_info ""
     log_info "Features:"
-    log_info "  ✓ LUKS2 encryption (Argon2id KDF) - SINGLE PASSPHRASE"
-    log_info "  ✓ BTRFS filesystem with automatic snapshots ($SNAPSHOT_RETENTION snapshots)"
-    log_info "  ✓ Security hardening (sysctl + kernel parameters)"
-    log_info "  ✓ Zen kernel for performance"
-    log_info "  ✓ NetworkManager for networking"
-    log_info "  ✓ SSH server enabled (root login allowed for development)"
-    log_info "  ✓ Time synchronization (systemd-timesyncd)"
-    log_info "  ✓ SSD TRIM optimization (fstrim.timer - weekly)"
-    log_info "  ✓ zsh as default shell"
-    log_info "  ✓ X11 graphics stack"
+    log_info "  âœ“ LUKS2 encryption (Argon2id KDF) - SINGLE PASSPHRASE"
+    log_info "  âœ“ BTRFS filesystem with automatic snapshots ($SNAPSHOT_RETENTION snapshots)"
+    log_info "  âœ“ Security hardening (sysctl + kernel parameters)"
+    log_info "  âœ“ Zen kernel for performance"
+    log_info "  âœ“ NetworkManager for networking"
+    log_info "  âœ“ SSH server enabled (root login allowed for development)"
+    log_info "  âœ“ Time synchronization (systemd-timesyncd)"
+    log_info "  âœ“ SSD TRIM optimization (fstrim.timer - weekly)"
+    log_info "  âœ“ zsh as default shell"
+    log_info "  âœ“ X11 graphics stack"
     if [[ "$ENABLE_NVIDIA_GPU" == "true" ]]; then
-        log_info "  ✓ NVIDIA GPU drivers (RTX A5500 support)"
+        log_info "  âœ“ NVIDIA GPU drivers (RTX A5500 support)"
     fi
     if [[ "${DESKTOP_SETUP_COMPLETE:-false}" == "true" ]]; then
-        log_info "  ✓ Desktop environment (dwm/st/dmenu/slstatus)"
-        log_info "  ✓ Archrice dotfiles deployed"
+        log_info "  âœ“ Desktop environment (dwm/st/dmenu/slstatus)"
+        log_info "  âœ“ Archrice dotfiles deployed"
     fi
     log_info ""
-    
+
     # Only show manual instructions if desktop was NOT installed
     if [[ "${DESKTOP_SETUP_COMPLETE:-false}" != "true" ]]; then
-        log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        log_info "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
         log_info ""
         log_info "OPTIONAL: Desktop Environment & Dotfiles Setup"
         log_info ""
@@ -2582,14 +2582,14 @@ main() {
         log_info "   sudo bash scripts/arch-secure-deploy.sh --phase 14"
         log_info ""
         log_info "This will:"
-        log_info "  • Clone your archrice dotfiles (https://github.com/yashpatel-01/archrice)"
-        log_info "  • Install packages from progs.csv (suckless tools, browsers, etc.)"
-        log_info "  • Deploy dotfiles to your home directory"
-        log_info "  • Build suckless software (dwm, st, dmenu, slstatus)"
+        log_info "  â€¢ Clone your archrice dotfiles (https://github.com/yashpatel-01/archrice)"
+        log_info "  â€¢ Install packages from progs.csv (suckless tools, browsers, etc.)"
+        log_info "  â€¢ Deploy dotfiles to your home directory"
+        log_info "  â€¢ Build suckless software (dwm, st, dmenu, slstatus)"
         log_info ""
         log_info "After phase 14 completes, reboot and run 'startx' to launch your environment."
         log_info ""
-        log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        log_info "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
         log_info ""
     fi
     log_info "Installation log: $LOG_FILE"
