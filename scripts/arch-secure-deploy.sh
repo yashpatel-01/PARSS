@@ -141,389 +141,6 @@ readonly MAX_RETRIES=3
 readonly RETRY_DELAY=5
 
 ################################################################################
-# TUI (TEXT USER INTERFACE) FUNCTIONS
-################################################################################
-
-# Global TUI availability flag
-TUI_AVAILABLE=false
-TUI_USE_DIALOG=false
-
-# TUI output buffer file
-readonly TUI_OUTPUT_FILE="/tmp/parss-tui-output-$$.log"
-readonly TUI_STATUS_FILE="/tmp/parss-tui-status-$$.txt"
-
-# Initialize TUI (prefer dialog over whiptail for better features)
-init_tui() {
-    # Check for dialog first (better features), then whiptail
-    if command -v dialog >/dev/null 2>&1; then
-        TUI_AVAILABLE=true
-        TUI_USE_DIALOG=true
-        log_success "TUI enabled (dialog)"
-    elif command -v whiptail >/dev/null 2>&1; then
-        TUI_AVAILABLE=true
-        TUI_USE_DIALOG=false
-        log_success "TUI enabled (whiptail)"
-    else
-        # Try to install dialog for better TUI experience
-        log_info "Installing dialog for enhanced UI..."
-        if pacman -Sy --noconfirm dialog >/dev/null 2>&1; then
-            TUI_AVAILABLE=true
-            TUI_USE_DIALOG=true
-            log_success "TUI enabled (dialog)"
-        else
-            log_warn "Could not install TUI tools, using text-only mode"
-            TUI_AVAILABLE=false
-            return
-        fi
-    fi
-
-    # Initialize TUI output files
-    touch "$TUI_OUTPUT_FILE"
-    echo "PARSS Installation Started" > "$TUI_STATUS_FILE"
-
-    # Configure colors for dialog/whiptail: black background with colored text
-    if [[ "$TUI_AVAILABLE" == "true" ]]; then
-        if [[ "$TUI_USE_DIALOG" == "true" ]]; then
-            # Dialog uses different color configuration
-            export DIALOGRC="/tmp/parss-dialogrc-$$"
-            cat > "$DIALOGRC" << 'EOF'
-# PARSS Dialog Configuration - Black background with cyan accents
-use_shadow = OFF
-use_colors = ON
-
-# Screen/window colors
-screen_color = (WHITE,BLACK,OFF)
-shadow_color = (BLACK,BLACK,OFF)
-
-# Dialog box colors
-dialog_color = (WHITE,BLACK,OFF)
-title_color = (BRIGHTWHITE,BLACK,ON)
-border_color = (BRIGHTCYAN,BLACK,ON)
-
-# Text and input
-inputbox_color = (WHITE,BLACK,OFF)
-inputbox_border_color = (BRIGHTCYAN,BLACK,ON)
-
-# Buttons
-button_active_color = (WHITE,CYAN,ON)
-button_inactive_color = (BLACK,CYAN,OFF)
-button_key_active_color = (WHITE,CYAN,ON)
-button_key_inactive_color = (BRIGHTWHITE,CYAN,OFF)
-button_label_active_color = (WHITE,CYAN,ON)
-button_label_inactive_color = (BLACK,CYAN,OFF)
-
-# Menu/list colors
-menubox_color = (WHITE,BLACK,OFF)
-menubox_border_color = (BRIGHTCYAN,BLACK,ON)
-item_color = (WHITE,BLACK,OFF)
-item_selected_color = (BLACK,CYAN,ON)
-tag_color = (BRIGHTCYAN,BLACK,ON)
-tag_selected_color = (WHITE,CYAN,ON)
-tag_key_color = (BRIGHTWHITE,BLACK,ON)
-tag_key_selected_color = (BRIGHTWHITE,CYAN,ON)
-
-# Progress/gauge
-gauge_color = (WHITE,CYAN,ON)
-
-# Text box
-textbox_color = (WHITE,BLACK,OFF)
-textbox_border_color = (BRIGHTCYAN,BLACK,ON)
-
-# Other elements
-form_active_text_color = (WHITE,BLACK,ON)
-form_text_color = (WHITE,BLACK,OFF)
-EOF
-        else
-            # Whiptail uses NEWT_COLORS
-            export NEWT_COLORS="
-root=white,black
-window=white,black
-border=brightcyan,black
-title=brightwhite,black
-textbox=white,black
-button=black,cyan
-compactbutton=white,black
-actbutton=white,cyan
-checkbox=white,black
-actcheckbox=brightwhite,cyan
-entry=white,black
-disentry=gray,black
-label=white,black
-listbox=white,black
-actlistbox=white,cyan
-sellistbox=black,cyan
-actsellistbox=black,cyan
-"
-        fi
-    fi
-}
-
-# Cleanup TUI resources
-cleanup_tui() {
-    rm -f "$TUI_OUTPUT_FILE" "$TUI_STATUS_FILE" "$DIALOGRC" 2>/dev/null
-}
-
-# Update TUI status (persistent display)
-tui_update_status() {
-    local phase="$1"
-    local operation="$2"
-
-    echo "$phase: $operation" > "$TUI_STATUS_FILE"
-}
-
-# Show persistent log viewer in background (tailbox)
-tui_show_log_viewer() {
-    if [[ "$TUI_AVAILABLE" != "true" ]]; then
-        return
-    fi
-
-    local title="$1"
-    local height="${2:-20}"
-    local width="${3:-78}"
-
-    if [[ "$TUI_USE_DIALOG" == "true" ]]; then
-        # Use dialog's tailboxbg for live log viewing (background process)
-        dialog --title "$title" --tailboxbg "$TUI_OUTPUT_FILE" "$height" "$width" &
-        TUI_LOG_VIEWER_PID=$!
-    else
-        # Whiptail doesn't have tailbox, use textbox with periodic updates
-        (
-            while true; do
-                if [[ -f "$TUI_OUTPUT_FILE" ]]; then
-                    whiptail --title "$title" --textbox "$TUI_OUTPUT_FILE" "$height" "$width" 2>/dev/null
-                fi
-                sleep 2
-            done
-        ) &
-        TUI_LOG_VIEWER_PID=$!
-    fi
-}
-
-# Close log viewer
-tui_close_log_viewer() {
-    if [[ -n "${TUI_LOG_VIEWER_PID:-}" ]]; then
-        kill "$TUI_LOG_VIEWER_PID" 2>/dev/null || true
-        unset TUI_LOG_VIEWER_PID
-    fi
-}
-
-# Execute command with TUI output capture
-tui_exec() {
-    local title="$1"
-    local description="$2"
-    shift 2
-    local cmd="$*"
-
-    # Update status
-    tui_update_status "$title" "$description"
-
-    # Log to both file and console
-    echo "" >> "$TUI_OUTPUT_FILE"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> "$TUI_OUTPUT_FILE"
-    echo "[$title] $description" >> "$TUI_OUTPUT_FILE"
-    echo "Command: $cmd" >> "$TUI_OUTPUT_FILE"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> "$TUI_OUTPUT_FILE"
-
-    # Execute and capture output
-    if eval "$cmd" 2>&1 | tee -a "$TUI_OUTPUT_FILE" "$LOG_FILE"; then
-        echo "[✓] Success: $description" >> "$TUI_OUTPUT_FILE"
-        return 0
-    else
-        local exit_code=$?
-        echo "[✗] Failed: $description (exit code: $exit_code)" >> "$TUI_OUTPUT_FILE"
-        return $exit_code
-    fi
-}
-
-# Show live progress window with command execution
-tui_exec_with_progress() {
-    local title="$1"
-    local description="$2"
-    shift 2
-    local cmd="$*"
-
-    if [[ "$TUI_AVAILABLE" != "true" ]]; then
-        # Fallback to regular execution
-        log_info "$description"
-        eval "$cmd" 2>&1 | tee -a "$LOG_FILE"
-        return $?
-    fi
-
-    # Show progress in TUI
-    echo "" > "$TUI_OUTPUT_FILE"
-    echo "[$title] $description" > "$TUI_OUTPUT_FILE"
-    echo "" >> "$TUI_OUTPUT_FILE"
-    echo "Executing..." >> "$TUI_OUTPUT_FILE"
-
-    if [[ "$TUI_USE_DIALOG" == "true" ]]; then
-        # Use dialog's progressbox for live output
-        eval "$cmd" 2>&1 | tee -a "$LOG_FILE" | dialog --title "$title" --progressbox "$description" 20 78
-        return ${PIPESTATUS[0]}
-    else
-        # For whiptail, show in background and use gauge
-        (eval "$cmd" 2>&1 | tee -a "$TUI_OUTPUT_FILE" "$LOG_FILE") &
-        local cmd_pid=$!
-
-        # Show activity indicator
-        (
-            local i=0
-            while kill -0 $cmd_pid 2>/dev/null; do
-                i=$(( (i + 10) % 100 ))
-                echo "$i"
-                echo "XXX"
-                echo "$description"
-                echo "XXX"
-                sleep 1
-            done
-            echo "100"
-        ) | whiptail --title "$title" --gauge "$description" 8 70 0
-
-        wait $cmd_pid
-        return $?
-    fi
-}
-
-# Show info box (non-blocking status message)
-tui_info() {
-    local title="$1"
-    local message="$2"
-
-    # Also append to TUI output file
-    if [[ -f "$TUI_OUTPUT_FILE" ]]; then
-        echo "[INFO] $message" >> "$TUI_OUTPUT_FILE"
-    fi
-
-    if [[ "$TUI_AVAILABLE" == "true" ]]; then
-        if [[ "$TUI_USE_DIALOG" == "true" ]]; then
-            dialog --title "$title" --infobox "$message" 8 70
-        else
-            whiptail --title "$title" --infobox "$message" 8 70
-        fi
-    fi
-    # Always log to console too
-    log_info "$message"
-}
-
-# Show progress gauge (percentage-based)
-tui_gauge() {
-    local title="$1"
-    local message="$2"
-    local percent="$3"
-
-    if [[ "$TUI_AVAILABLE" == "true" ]]; then
-        if [[ "$TUI_USE_DIALOG" == "true" ]]; then
-            echo "$percent" | dialog --title "$title" --gauge "$message" 8 70 0
-        else
-            echo "$percent" | whiptail --title "$title" --gauge "$message" 8 70 0
-        fi
-    else
-        log_info "[$percent%] $message"
-    fi
-}
-
-# Show message box (requires user acknowledgment)
-tui_msgbox() {
-    local title="$1"
-    local message="$2"
-    local height="${3:-10}"
-    local width="${4:-70}"
-
-    if [[ "$TUI_AVAILABLE" == "true" ]]; then
-        if [[ "$TUI_USE_DIALOG" == "true" ]]; then
-            dialog --title "$title" --msgbox "$message" "$height" "$width"
-        else
-            whiptail --title "$title" --msgbox "$message" "$height" "$width"
-        fi
-    else
-        echo ""
-        echo "═══════════════════════════════════════════════════════════"
-        echo "$title"
-        echo "═══════════════════════════════════════════════════════════"
-        echo "$message"
-        echo "═══════════════════════════════════════════════════════════"
-        read -p "Press Enter to continue..."
-    fi
-}
-
-# Show yes/no dialog
-tui_yesno() {
-    local title="$1"
-    local question="$2"
-    local height="${3:-10}"
-    local width="${4:-70}"
-
-    if [[ "$TUI_AVAILABLE" == "true" ]]; then
-        if [[ "$TUI_USE_DIALOG" == "true" ]]; then
-            if dialog --title "$title" --yesno "$question" "$height" "$width"; then
-                return 0
-            else
-                return 1
-            fi
-        else
-            if whiptail --title "$title" --yesno "$question" "$height" "$width"; then
-                return 0
-            else
-                return 1
-            fi
-        fi
-    else
-        echo ""
-        echo "═══════════════════════════════════════════════════════════"
-        echo "$title"
-        echo "═══════════════════════════════════════════════════════════"
-        echo "$question"
-        echo "═══════════════════════════════════════════════════════════"
-        read -p "Continue? (y/N): " response
-        [[ "$response" =~ ^[yY]$ ]] && return 0 || return 1
-    fi
-}
-
-# Progress tracker for package installation
-tui_package_progress() {
-    local current="$1"
-    local total="$2"
-    local package_name="$3"
-    local operation="$4"  # "installing", "building", etc.
-
-    local percent=$((current * 100 / total))
-    local title="PARSS Installation Progress"
-    local message="Package $current of $total: $package_name\n\n$operation..."
-
-    tui_info "$title" "$message"
-}
-
-# Show installation phase progress
-tui_phase_start() {
-    local phase_num="$1"
-    local phase_name="$2"
-    local description="$3"
-
-    local title="PARSS - Phase $phase_num"
-    local message="Starting: $phase_name\n\n$description"
-
-    tui_info "$title" "$message"
-    sleep 1  # Brief pause so user can see
-}
-
-# Show long-running operation with simulated progress
-tui_long_operation() {
-    local title="$1"
-    local message="$2"
-    local duration="${3:-10}"  # Default 10 seconds
-
-    if [[ "$TUI_AVAILABLE" == "true" ]]; then
-        (
-            for i in $(seq 0 5 100); do
-                echo "$i"
-                sleep $((duration / 20))
-            done
-        ) | whiptail --title "$title" --gauge "$message" 8 70 0
-    else
-        log_info "$message"
-    fi
-}
-
-################################################################################
 # UTILITY FUNCTIONS
 ################################################################################
 
@@ -552,10 +169,6 @@ trap 'trap_error ${LINENO}' ERR
 # Cleanup function for error scenarios
 cleanup_on_error() {
     log_warn "Attempting emergency cleanup..."
-
-    # Close TUI log viewer and cleanup
-    tui_close_log_viewer
-    cleanup_tui
 
     # Recursive unmount of target root
     if [[ -n "${MOUNT_ROOT:-}" && -d "$MOUNT_ROOT" ]]; then
@@ -936,7 +549,7 @@ check_disk_space() {
 ################################################################################
 
 phase_1_preflight_checks() {
-    tui_phase_start "1" "Pre-flight Checks" "Validating system requirements and environment"
+
     log_section "PHASE 1: PRE-FLIGHT VALIDATION"
 
     log_info "Checking system resources..."
@@ -981,7 +594,7 @@ phase_1_preflight_checks() {
 ################################################################################
 
 phase_1b_interactive_configuration() {
-    tui_phase_start "1B" "System Configuration" "Collecting installation parameters"
+
     log_section "PHASE 1B: INTERACTIVE SYSTEM CONFIGURATION"
 
     echo ""
@@ -1144,7 +757,7 @@ phase_1b_interactive_configuration() {
 ################################################################################
 
 phase_2_device_configuration() {
-    tui_phase_start "2" "Device Selection" "Selecting target device and partition layout"
+
     log_section "PHASE 2: DEVICE & PARTITION CONFIGURATION"
 
     log_info "Available block devices:"
@@ -1287,7 +900,7 @@ pre_flight_unmount_all() {
 ################################################################################
 
 phase_3_disk_preparation() {
-    tui_phase_start "3" "Disk Preparation" "Wiping and partitioning target device"
+
     log_section "PHASE 3: DISK PREPARATION"
 
     pre_flight_unmount_all
@@ -1296,13 +909,10 @@ phase_3_disk_preparation() {
     cryptsetup close "${LUKS_ROOT_NAME}" 2>/dev/null || true
 
     log_info "Wiping existing filesystem signatures from $TARGET_DEVICE..."
-    if [[ "$TUI_AVAILABLE" == "true" ]]; then
-        (wipefs -af $TARGET_DEVICE 2>&1 && echo 50 && dd if=/dev/zero of="$TARGET_DEVICE" bs=1M count=10 status=none 2>&1 && echo 100) | whiptail --title "PARSS - Disk Preparation" --gauge "Wiping disk signatures and zeroing..." 8 70 0
-    else
-        execute_cmd "wipefs -af $TARGET_DEVICE" "Wiping all filesystem signatures" true
-        log_info "Zeroing out first 10MB of disk..."
-        dd if=/dev/zero of="$TARGET_DEVICE" bs=1M count=10 status=none 2>&1 | tee -a "$LOG_FILE" || true
-    fi
+    execute_cmd "wipefs -af $TARGET_DEVICE" "Wiping all filesystem signatures" true
+
+    log_info "Zeroing out first 10MB of disk..."
+    dd if=/dev/zero of="$TARGET_DEVICE" bs=1M count=10 status=none 2>&1 | tee -a "$LOG_FILE" || true
     sync
 
     log_info "Creating new GPT partition table..."
@@ -1371,7 +981,7 @@ phase_3_disk_preparation() {
 ################################################################################
 
 phase_4_luks_encryption() {
-    tui_phase_start "4" "LUKS Encryption" "Setting up full-disk encryption"
+
     log_section "PHASE 4: LUKS ENCRYPTION"
 
     local luks_passphrase
@@ -1538,7 +1148,7 @@ phase_4_luks_encryption() {
 ################################################################################
 
 phase_5_btrfs_filesystem() {
-    tui_phase_start "5" "BTRFS Filesystem" "Creating BTRFS filesystem and subvolumes"
+
     log_section "PHASE 5: BTRFS FILESYSTEM SETUP"
 
     local root_crypt_device="/dev/mapper/$LUKS_ROOT_NAME"
@@ -1689,7 +1299,7 @@ phase_5_btrfs_filesystem() {
 }
 
 phase_6_base_installation() {
-    tui_phase_start "6" "Base Installation" "Installing core Arch Linux system (this may take 5-15 minutes)"
+
     log_section "PHASE 6: BASE SYSTEM INSTALLATION (PACSTRAP)"
 
     log_info "Updating Pacman keyring..."
@@ -1738,10 +1348,7 @@ phase_6_base_installation() {
     packages_str=$(IFS=' '; echo "${packages[*]}")
 
     log_info "Installing base packages via pacstrap (${#packages[@]} packages)..."
-
-    if [[ "$TUI_AVAILABLE" == "true" ]]; then
-        tui_info "PARSS - Base Installation" "Installing base system (${#packages[@]} packages)\n\nThis will take 5-15 minutes depending on network speed.\n\nPackages include: linux, grub, btrfs-progs,\nnetworkmanager, xorg, and more..."
-    fi
+    log_info "This will take 5-15 minutes depending on network speed..."
 
     if ! execute_cmd_retry "pacstrap -K $MOUNT_ROOT $packages_str" \
         "Installing base system packages" 2; then
@@ -1755,7 +1362,7 @@ phase_6_base_installation() {
 }
 
 phase_7_mount_configuration() {
-    tui_phase_start "7" "Mount Configuration" "Configuring fstab and crypttab"
+
     log_section "PHASE 7: MOUNT & CRYPTTAB CONFIGURATION & ENCRYPTION"
 
     log_info "Generating fstab from current mounts..."
@@ -1785,7 +1392,7 @@ EOF
 ################################################################################
 
 phase_8_chroot_configuration() {
-    tui_phase_start "8" "Bootloader Setup" "Configuring mkinitcpio and GRUB"
+
     log_section "PHASE 8: CHROOT ENVIRONMENT & BOOTLOADER"
 
     # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1855,10 +1462,6 @@ phase_8_chroot_configuration() {
     # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     log_info "Installing GRUB to EFI partition..."
-    if [[ "$TUI_AVAILABLE" == "true" ]]; then
-        tui_info "PARSS - GRUB Installation" "Installing GRUB bootloader...\n\nTarget: x86_64-efi\nLocation: /boot\nBootloader ID: ArchLinux"
-    fi
-
     arch-chroot "$MOUNT_ROOT" grub-install \
         --target=x86_64-efi \
         --efi-directory=/boot \
@@ -1870,9 +1473,8 @@ phase_8_chroot_configuration() {
         return 1
     fi
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    # CONFIGURE GRUB FOR ENCRYPTED ROOT
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    log_info "Generating GRUB configuration..."
+    arch-chroot "$MOUNT_ROOT" grub-mkconfig -o /boot/grub/grub.cfg 2>&1 | tee -a "$LOG_FILE"
 
     log_info "Configuring GRUB kernel parameters for encrypted root..."
 
@@ -2000,7 +1602,7 @@ phase_8_chroot_configuration() {
 }
 
 phase_9_system_configuration() {
-    tui_phase_start "9" "System Configuration" "Setting hostname, locale, timezone, and networking"
+
     log_section "PHASE 9: SYSTEM CONFIGURATION"
 
     log_info "Configuring hostname..."
@@ -2077,7 +1679,7 @@ EOF
 }
 
 phase_10_user_setup() {
-    tui_phase_start "10" "User Setup" "Creating user account and setting passwords"
+
     log_section "PHASE 10: USER ACCOUNT SETUP"
 
     log_info "Creating primary user account: $PRIMARY_USER"
@@ -2142,7 +1744,7 @@ phase_10_user_setup() {
 }
 
 phase_11_security_hardening() {
-    tui_phase_start "11" "Security Hardening" "Applying kernel parameters and sysctl tuning"
+
     log_section "PHASE 11: SECURITY HARDENING"
 
     log_info "Creating security-hardened sysctl parameters..."
@@ -2168,7 +1770,7 @@ SYSCTL_CONFIG
 }
 
 phase_12_snapshot_automation() {
-    tui_phase_start "12" "Snapshot Automation" "Setting up automatic BTRFS snapshots"
+
     log_section "PHASE 12: BTRFS SNAPSHOT AUTOMATION"
 
     log_info "Creating BTRFS snapshot automation script..."
@@ -2281,9 +1883,9 @@ Install complete desktop environment (DWM + Dotfiles)
   âœ“ Faster testing workflow
   âœ“ Complete system ready in one session
 
-â±ï¸  TIME: 10-30 minutes (network dependent)
+â±ï¸⏱️  TIME: 10-30 minutes (network dependent)
 
-ðŸ’¡ TIP: Can install later with:
+💡 TIP: Can install later with:
    sudo bash arch-secure-deploy.sh --phase 14"
 
     # Use TUI if available, otherwise text prompt
@@ -2298,25 +1900,25 @@ Install complete desktop environment (DWM + Dotfiles)
         # Fallback to text-based prompt
         echo ""
         echo ""
-        echo "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—"
-        echo "â•‘                                                                               â•‘"
-        echo "â•‘                    ðŸŽ¨  DESKTOP ENVIRONMENT INSTALLATION  ðŸŽ¨                   â•‘"
-        echo "â•‘                                                                               â•‘"
-        echo "â•‘                              âš¡ PHASE 14 âš¡                                    â•‘"
-        echo "â•‘                                                                               â•‘"
-        echo "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
+        echo "╔═══════════════════════════════════════════════════════════════════════════════╗"
+        echo "║                                                                               ║"
+        echo "║                    🎨  DESKTOP ENVIRONMENT INSTALLATION  🎨                   ║"
+        echo "║                                                                               ║"
+        echo "║                              ⚡ PHASE 14 ⚡                                    ║"
+        echo "║                                                                               ║"
+        echo "╚═══════════════════════════════════════════════════════════════════════════════╝"
         echo ""
         echo "$prompt_message"
         echo ""
-        echo "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—"
-        echo "â•‘                                                                               â•‘"
-        echo "â•‘                     INSTALL DESKTOP ENVIRONMENT NOW?                          â•‘"
-        echo "â•‘                                                                               â•‘"
-        echo "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
+        echo "╔═══════════════════════════════════════════════════════════════════════════════╗"
+        echo "║                                                                               ║"
+        echo "║                     INSTALL DESKTOP ENVIRONMENT NOW?                          ║"
+        echo "║                                                                               ║"
+        echo "╚═══════════════════════════════════════════════════════════════════════════════╝"
         echo ""
 
         local response
-        read -p "  ðŸ‘‰ Your choice (y/N): " response
+        read -p "  👉 Your choice (y/N): " response
 
         if [[ ! "$response" =~ ^[yY]$ ]]; then
             log_info "Skipping desktop environment setup."
@@ -2416,19 +2018,10 @@ else
 
         case "\$tag" in
             "" )
-                # Show progress in TUI or console
-                if [[ "$TUI_AVAILABLE" == "true" ]]; then
-                    percent=\$((n * 100 / total))
-                    echo \$percent | whiptail --title "PARSS Desktop Setup" --gauge "[\$n/\$total] Installing: \$prog" 8 70 0 &
-                fi
                 info "[\$n/\$total] [pacman] \$prog"
                 pacman --noconfirm --needed -S "\$prog" >/dev/null 2>&1 || warn "Failed: \$prog"
                 ;;
             "G" )
-                if [[ "$TUI_AVAILABLE" == "true" ]]; then
-                    percent=\$((n * 100 / total))
-                    echo \$percent | whiptail --title "PARSS Desktop Setup" --gauge "[\$n/\$total] Building: \$prog" 8 70 0 &
-                fi
                 info "[\$n/\$total] [git/make] \$prog"
                 repodir="/home/$PRIMARY_USER/.local/src"
                 sudo -u $PRIMARY_USER mkdir -p "\$repodir"
@@ -2450,10 +2043,6 @@ else
             "A" )
                 # AUR packages - requires AUR helper (yay)
                 if command -v yay >/dev/null 2>&1; then
-                    if [[ "$TUI_AVAILABLE" == "true" ]]; then
-                        percent=\$((n * 100 / total))
-                        echo \$percent | whiptail --title "PARSS Desktop Setup" --gauge "[\$n/\$total] Building from AUR: \$prog\n\nThis may take several minutes..." 9 70 0 &
-                    fi
                     info "[\$n/\$total] [AUR] \$prog (building from source...)"
                     sudo -u $PRIMARY_USER yay --noconfirm --needed -S "\$prog" >/dev/null 2>&1 || warn "Failed: \$prog"
                 else
@@ -2556,7 +2145,7 @@ DESKTOP_SETUP_EOF
 }
 
 phase_13_final_verification() {
-    tui_phase_start "13" "Final Verification" "Verifying installation and unmounting filesystems"
+
     log_section "PHASE 13: FINAL VERIFICATION & UNMOUNTING"
 
     log_info "Verifying installation completeness..."
@@ -2649,9 +2238,6 @@ EOF
 }
 
 main() {
-    # Initialize TUI if possible
-    init_tui
-
     # Parse command-line arguments
     local START_FROM_PHASE=1
     local RUN_ONLY_PHASE=""
@@ -2820,10 +2406,6 @@ main() {
     log_info "Installation log: $LOG_FILE"
     log_info "Installation completed: $(date)"
     log_info ""
-
-    # Cleanup TUI resources
-    tui_close_log_viewer
-    cleanup_tui
 }
 
 # Execute main
