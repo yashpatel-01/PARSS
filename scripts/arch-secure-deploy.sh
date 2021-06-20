@@ -433,20 +433,20 @@ prompt_luks_passphrase() {
     log_section "LUKS ENCRYPTION PASSPHRASE SETUP"
 
     echo ""
-    echo -e "${CYAN}â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—${NC}"
-    echo -e "${CYAN}â•‘                  ENCRYPTION PASSPHRASE SETUP                    â•‘${NC}"
-    echo -e "${CYAN}â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
+    echo -e "${CYAN}=============================================================${NC}"
+    echo -e "${CYAN}                  ENCRYPTION PASSPHRASE SETUP                    ${NC}"
+    echo -e "${CYAN}=============================================================${NC}"
     echo ""
     echo "Passphrase Requirements:"
-    echo "  â€¢ Minimum 12 characters"
-    echo "  â€¢ At least one uppercase letter (A-Z)"
-    echo "  â€¢ At least one lowercase letter (a-z)"
-    echo "  â€¢ At least one number (0-9)"
-    echo "  â€¢ Special characters recommended"
+    echo "  - Minimum 12 characters"
+    echo "  - At least one uppercase letter (A-Z)"
+    echo "  - At least one lowercase letter (a-z)"
+    echo "  - At least one number (0-9)"
+    echo "  - Special characters recommended"
     echo ""
-    echo -e "${YELLOW}âš ï¸  You will need this passphrase to boot your system every time${NC}"
-    echo -e "${YELLOW}âš ï¸  Write it down and store it in a secure location${NC}"
-    echo -e "${YELLOW}âš ï¸  This passphrase will unlock the encrypted root partition (containing all BTRFS subvolumes)${NC}"
+    echo -e "${YELLOW}  You will need this passphrase to boot your system every time${NC}"
+    echo -e "${YELLOW}  Write it down and store it in a secure location${NC}"
+    echo -e "${YELLOW}  This passphrase will unlock the encrypted root partition (containing all BTRFS subvolumes)${NC}"
     echo ""
 
     local passphrase=""
@@ -486,11 +486,12 @@ prompt_luks_passphrase() {
 # Prompt for partition size
 prompt_partition_size() {
     echo ""
-    echo -e "${CYAN}â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—${NC}"
-    echo -e "${CYAN}â•‘               CUSTOM PARTITION SIZE CONFIGURATION               â•‘${NC}"
-    echo -e "${CYAN}â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
+    echo -e "${CYAN}=============================================================${NC}"
+    echo -e "${CYAN}        CUSTOM PARTITION SIZE CONFIGURATION${NC}"
+    echo -e "${CYAN}=============================================================${NC}"
     echo ""
     echo "Total available space: ${AVAILABLE_SPACE_GB}GB"
+
     echo ""
     echo "Configuration:"
     echo "  1. EFI System Partition: 1GB (FAT32)"
@@ -575,7 +576,7 @@ phase_1_preflight_checks() {
 
     for tool in "${required_tools[@]}"; do
         if command -v "$tool" &> /dev/null; then
-            log_debug "âœ“ $tool available"
+            log_debug "  $tool available"
         else
             log_error "Required tool not found: $tool"
             return 1
@@ -594,9 +595,9 @@ phase_1b_interactive_configuration() {
     log_section "PHASE 1B: INTERACTIVE SYSTEM CONFIGURATION"
 
     echo ""
-    echo -e "${CYAN}â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—${NC}"
-    echo -e "${CYAN}â•‘         CUSTOM SYSTEM CONFIGURATION (Interactive)          â•‘${NC}"
-    echo -e "${CYAN}â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
+    echo -e "${CYAN}=============================================================${NC}"
+    echo -e "${CYAN}         CUSTOM SYSTEM CONFIGURATION (Interactive)          ${NC}"
+    echo -e "${CYAN}=============================================================${NC}"
     echo ""
     echo "This script will ask for custom names and settings."
     echo "Press Enter to use default values shown in [brackets]"
@@ -682,9 +683,9 @@ phase_1b_interactive_configuration() {
     echo "  Australia/Sydney        (Australia)"
     echo ""
     echo "To find your timezone:"
-    echo "  â€¢ List all: timedatectl list-timezones"
-    echo "  â€¢ Search:   timedatectl list-timezones | grep -i <region>"
-    echo "  â€¢ Example:  timedatectl list-timezones | grep -i america"
+    echo "  • List all: timedatectl list-timezones"
+    echo "  • Search:   timedatectl list-timezones | grep -i <region>"
+    echo "  • Example:  timedatectl list-timezones | grep -i america"
     echo ""
     read -p "Enter timezone [UTC]: " input_timezone
     SYSTEM_TIMEZONE="${input_timezone:-UTC}"
@@ -698,32 +699,9 @@ phase_1b_interactive_configuration() {
 
     # CONFIRMATION
     log_info ""
-    log_info "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
+    log_info "============================================================="
     log_info "INSTALLATION SUMMARY - Please Review"
-    log_info "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
-    log_info ""
-    log_info "SYSTEM IDENTIFICATION:"
-    log_info "  Hostname:                $HOSTNAME_SYS"
-    log_info "  Primary User:            $PRIMARY_USER"
-    log_info ""
-    log_info "STORAGE CONFIGURATION:"
-    log_info "  Storage Device:          $TARGET_DEVICE"
-    log_info "  EFI Partition:           1GB"
-    log_info "  Root Partition:          $((AVAILABLE_SPACE_GB - 1))GB (all BTRFS subvolumes)"
-    log_info "  BTRFS Layout:            Single-partition with subvolumes"
-    log_info "  Subvolumes:              @, @home, @var, @snapshots, @varcache, @log"
-    log_info ""
-    log_info "ENCRYPTION:"
-    log_info "  LUKS Device Name:        $LUKS_ROOT_NAME"
-    log_info "  Encryption Mode:         Single passphrase for entire system"
-    log_info ""
-    log_info "OPTIONAL FEATURES:"
-    log_info "  @log Subvolume:          $ADD_LOG_SUBVOLUME"
-    log_info "  NVIDIA GPU Support:      $ENABLE_NVIDIA_GPU"
-    log_info "  Snapshot Retention:      $SNAPSHOT_RETENTION"
-    log_info "  Timezone:                $SYSTEM_TIMEZONE"
-    log_info ""
-    log_info "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
+    log_info "============================================================="
     echo ""
 
     read -p "Proceed with installation? (type 'y' to confirm): " final_confirm
@@ -991,10 +969,6 @@ phase_4_luks_encryption() {
     log_warn "[DEBUG] LUKS passphrase length: ${#luks_passphrase}"
     log_warn "[DEBUG] LUKS passphrase (raw): '$luks_passphrase'"
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    # FORMAT EFI SYSTEM PARTITION
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
     log_info "Formatting EFI System Partition..."
     sleep 2
     udevadm settle --timeout=10 || true
@@ -1006,10 +980,6 @@ phase_4_luks_encryption() {
 
     execute_cmd "mkfs.fat -F 32 -n EFI $BOOT_PARTITION" "Formatting $BOOT_PARTITION as FAT32" true
     sync
-
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    # ENCRYPT ROOT PARTITION (FIXED METHOD)
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     log_info "Preparing root partition for encryption..."
     sleep 2
@@ -1102,14 +1072,12 @@ phase_4_luks_encryption() {
     sleep 2
     udevadm settle --timeout=10 || true
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    # FINAL VERIFICATION
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
     log_info "Verifying encrypted volume..."
     ls -la /dev/mapper/ | tee -a "$LOG_FILE"
 
     log_info "LUKS status summary:"
+    log_info "  Root: $ROOT_PARTITION → /dev/mapper/$LUKS_ROOT_NAME"
+    log_info "  Encryption: "
     log_info "  Root: $ROOT_PARTITION â†’ /dev/mapper/$LUKS_ROOT_NAME"
     log_info "  Encryption: âœ“"
 
