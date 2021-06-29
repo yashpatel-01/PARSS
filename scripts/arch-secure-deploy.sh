@@ -1076,10 +1076,8 @@ phase_4_luks_encryption() {
     ls -la /dev/mapper/ | tee -a "$LOG_FILE"
 
     log_info "LUKS status summary:"
-    log_info "  Root: $ROOT_PARTITION → /dev/mapper/$LUKS_ROOT_NAME"
-    log_info "  Encryption: "
-    log_info "  Root: $ROOT_PARTITION â†’ /dev/mapper/$LUKS_ROOT_NAME"
-    log_info "  Encryption: âœ“"
+    log_info "  Root: $ROOT_PARTITION -> /dev/mapper/$LUKS_ROOT_NAME"
+    log_info "  Encryption: [ENABLED]"
 
     # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # LUKS PASSPHRASE SELF-TEST (NON-INTERACTIVE)
