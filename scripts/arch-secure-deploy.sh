@@ -1847,7 +1847,7 @@ Install complete desktop environment (DWM + Dotfiles)
 
 â±ï¸⏱️  TIME: 10-30 minutes (network dependent)
 
- TIP: Can install later with:
+TIP: Can install later with:
    sudo bash arch-secure-deploy.sh --phase 14"
 
     # Use TUI if available, otherwise text prompt
