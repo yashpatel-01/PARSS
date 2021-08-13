@@ -10,19 +10,19 @@
 # Version: 2.2 (Updated - Single passphrase, menu selection, new defaults)
 #
 # Features:
-#   âœ“ Interactive user input (hostname, username, BTRFS volume names)
-#   âœ“ Customizable partition sizing (root: 170-190GB, home: remainder)
-#   âœ“ LUKS2 encryption with Argon2id KDF (mandatory)
-#   âœ“ BTRFS filesystem with multi-subvolume architecture
-#   âœ“ Comprehensive error recovery (15+ scenarios)
-#   âœ“ Security hardening (kernel params, sysctl tuning)
-#   âœ“ BTRFS automatic snapshot automation (weekly)
-#   âœ“ (Planned) CSV-driven package installation (pacman/AUR/git)
-#   âœ“ (Planned) Automatic archrice/PARSS dotfiles deployment
-#   âœ“ (Planned) Suckless window manager stack (dwm, st, dmenu, slstatus)
-#   âœ“ Network resilience with retry logic
-#   âœ“ Extensive logging and state tracking
-#   âœ“ Disaster recovery mechanisms
+#    * Interactive user input (hostname, username, BTRFS volume names)
+#    * Customizable partition sizing (root: 170-190GB, home: remainder)
+#    * LUKS2 encryption with Argon2id KDF (mandatory)
+#    * BTRFS filesystem with multi-subvolume architecture
+#    * Comprehensive error recovery (15+ scenarios)
+#    * Security hardening (kernel params, sysctl tuning)
+#    * BTRFS automatic snapshot automation (weekly)
+#    * (Planned) CSV-driven package installation (pacman/AUR/git)
+#    * (Planned) Automatic archrice/PARSS dotfiles deployment
+#    * (Planned) Suckless window manager stack (dwm, st, dmenu, slstatus)
+#    * Network resilience with retry logic
+#    * Extensive logging and state tracking
+#    * Disaster recovery mechanisms
 #
 # Usage: sudo bash ./arch-secure-deploy-production.sh
 #
@@ -61,41 +61,41 @@ trap 'last_command=$current_command; current_command=$BASH_COMMAND' DEBUG
 trap 'echo "[ERROR] \"${last_command}\" command failed with exit code $? at line $LINENO"' ERR
 
 # Changes in v2.2:
-#   âœ“ Root partition: Single BTRFS partition with all subvolumes (was split root+home)
-#   âœ“ Default hostname: devta (was archlinux)
-#   âœ“ Default username: patel (was empty)
-#   âœ“ Default BTRFS names: root/home/snapshots (was arch_root/arch_home/arch_snapshots)
-#   âœ“ Default LUKS name: mahadev (was yumraj, single partition only)
-#   âœ“ Default log subvolume: yes (was yes)
-#   âœ“ Default NVIDIA: yes (was yes)
-#   âœ“ Default snapshot retention: 12 (was 8)
-#   âœ“ Device selection: Menu-based (1/2/3) instead of typing full path
-#   âœ“ Single LUKS passphrase: Both root and home use same password
-#   âœ“ Unlock once: Only one passphrase prompt at boot (unlocks both)
+#    * Root partition: Single BTRFS partition with all subvolumes (was split root+home)
+#    * Default hostname: devta (was archlinux)
+#    * Default username: patel (was empty)
+#    * Default BTRFS names: root/home/snapshots (was arch_root/arch_home/arch_snapshots)
+#    * Default LUKS name: mahadev (was yumraj, single partition only)
+#    * Default log subvolume: yes (was yes)
+#    * Default NVIDIA: yes (was yes)
+#    * Default snapshot retention: 12 (was 8)
+#    * Device selection: Menu-based (1/2/3) instead of typing full path
+#    * Single LUKS passphrase: Both root and home use same password
+#    * Unlock once: Only one passphrase prompt at boot (unlocks both)
 #
 # Usage: sudo bash ./arch-secure-deploy-production-FINAL.sh
 #
 # Version: 2.4 (PARSS Enhanced - Reliability & Security Pillars)
 #
 # Bug Fixes in v2.3:
-#   âœ“ Fixed partition creation alignment issues
-#   âœ“ Fixed device synchronization after partitioning
-#   âœ“ Added udevadm settle for kernel partition table refresh
-#   âœ“ Fixed partition naming for NVMe vs SATA devices
-#   âœ“ Added partition verification before encryption
-#   âœ“ Improved error handling and logging
-#   âœ“ Added sleep delays for device readiness
-#   âœ“ Fixed cryptsetup passphrase input handling
+#    * Fixed partition creation alignment issues
+#    * Fixed device synchronization after partitioning
+#    * Added udevadm settle for kernel partition table refresh
+#    * Fixed partition naming for NVMe vs SATA devices
+#    * Added partition verification before encryption
+#    * Improved error handling and logging
+#    * Added sleep delays for device readiness
+#    * Fixed cryptsetup passphrase input handling
 #
 # Previous features (v2.2):
-#   âœ“ Root partition: Single BTRFS partition with all subvolumes
-#   âœ“ Default hostname: devta
-#   âœ“ Default username: patel
-#   âœ“ Default BTRFS names: root/home/snapshots
-#   âœ“ Default LUKS name: mahadev
-#   âœ“ Default snapshot retention: 12
-#   âœ“ Menu-based device selection
-#   âœ“ Single-partition BTRFS layout (all subvolumes on one encrypted partition)
+#    * Root partition: Single BTRFS partition with all subvolumes
+#    * Default hostname: devta
+#    * Default username: patel
+#    * Default BTRFS names: root/home/snapshots
+#    * Default LUKS name: mahadev
+#    * Default snapshot retention: 12
+#    * Menu-based device selection
+#    * Single-partition BTRFS layout (all subvolumes on one encrypted partition)
 #
 ################################################################################
 
@@ -201,12 +201,12 @@ log_debug() {
 
 log_success() {
     local message="$1"
-    echo -e "${GREEN}[âœ“ SUCCESS]${NC} $message" | tee -a "$LOG_FILE"
+    echo -e "${GREEN}[ * SUCCESS]${NC} $message" | tee -a "$LOG_FILE"
 }
 
 log_error() {
     local message="$1"
-    echo -e "${RED}[âœ— ERROR]${NC} $message" | tee -a "$LOG_FILE" "$ERROR_LOG"
+    echo -e "${RED}[ * ERROR]${NC} $message" | tee -a "$LOG_FILE" "$ERROR_LOG"
 }
 
 log_section() {
@@ -1756,9 +1756,9 @@ for subvol in "@" "@home"; do
     snapshot_path="$SNAPSHOT_DIR/$snapshot_name"
 
     if btrfs subvolume snapshot -r "/${subvol#@}" "$snapshot_path" 2>/dev/null; then
-        log_snapshot "âœ“ Snapshot created: $snapshot_name"
+        log_snapshot " * Snapshot created: $snapshot_name"
     else
-        log_snapshot "âœ— Failed to create snapshot: $snapshot_name"
+        log_snapshot " * Failed to create snapshot: $snapshot_name"
     fi
 done
 
@@ -1840,12 +1840,12 @@ Install complete desktop environment (DWM + Dotfiles)
   - Development tools (neovim, git, etc.)
 
  ADVANTAGES:
-  âœ“ No reboot needed - continue immediately
-  âœ“ Network already configured
-  âœ“ Faster testing workflow
-  âœ“ Complete system ready in one session
+   * No reboot needed - continue immediately
+   * Network already configured
+   * Faster testing workflow
+   * Complete system ready in one session
 
-â±ï¸  TIME: 10-30 minutes (network dependent)
+ *ï¸  TIME: 10-30 minutes (network dependent)
 
 TIP: Can install later with:
    sudo bash arch-secure-deploy.sh --phase 14"
@@ -1912,7 +1912,7 @@ info "Configuring temporary passwordless sudo for AUR builds..."
 trap 'rm -f /etc/sudoers.d/parss-temp' HUP INT QUIT TERM PWR EXIT
 echo "%wheel ALL=(ALL) NOPASSWD: ALL
 Defaults:%wheel,root runcwd=*" >/etc/sudoers.d/parss-temp
-info "âœ“ Temporary sudo configured (will be removed after setup)"
+info " * Temporary sudo configured (will be removed after setup)"
 
 # 1. Clone archrice dotfiles
 info "Cloning archrice dotfiles repository..."
@@ -1949,9 +1949,9 @@ if ! command -v yay >/dev/null 2>&1; then
     # Configure yay for auto-updates of *-git packages (LARBS does this)
     sudo -u $PRIMARY_USER yay -Y --save --devel >/dev/null 2>&1
 
-    info "âœ“ yay installed"
+    info " * yay installed"
 else
-    info "âœ“ yay already installed"
+    info " * yay already installed"
 fi
 
 # 3. Install packages from progs.csv
@@ -2013,7 +2013,7 @@ else
     done < "$PROGS_FILE"
 
     info ""
-    info "âœ“ Package installation complete (\$n packages processed)"
+    info " * Package installation complete (\$n packages processed)"
 fi
 
 # 4. Deploy dotfiles
@@ -2034,7 +2034,7 @@ chmod +x /home/$PRIMARY_USER/.local/bin/* 2>/dev/null || true
 # Set OLED black wallpaper using existing file from dotfiles
 if [[ -f "/home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png" ]]; then
     sudo -u $PRIMARY_USER ln -sf /home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png /home/$PRIMARY_USER/.local/share/bg
-    info "âœ“ OLED black wallpaper set"
+    info " * OLED black wallpaper set"
 fi
 
 # Auto-detect screen resolution and set DPI in Xresources
@@ -2051,7 +2051,7 @@ xresources="/home/$PRIMARY_USER/.config/x11/xresources"
 if [[ -f "\$xresources" ]]; then
     sed -i "s/^! Xft.dpi:.*/Xft.dpi: \$dpi/" "\$xresources"
     sed -i "s/^Xft.dpi:.*/Xft.dpi: \$dpi/" "\$xresources"
-    info "âœ“ DPI set to \$dpi (detected \$resolution)"
+    info " * DPI set to \$dpi (detected \$resolution)"
 fi
 
 # Remove DWM gaps for OLED displays (edge-to-edge windows)
@@ -2062,12 +2062,12 @@ if [[ -f "\$dwm_config" ]]; then
     sed -i 's/^static const unsigned int gappoh.*/static const unsigned int gappoh = 0;/' "\$dwm_config"
     sed -i 's/^static const unsigned int gappov.*/static const unsigned int gappov = 0;/' "\$dwm_config"
     cd "/home/$PRIMARY_USER/.local/src/dwm"
-    sudo -u $PRIMARY_USER make >/dev/null 2>&1 && make install >/dev/null 2>&1 && info "âœ“ DWM gaps removed"
+    sudo -u $PRIMARY_USER make >/dev/null 2>&1 && make install >/dev/null 2>&1 && info " * DWM gaps removed"
 fi
 
 # Copy configs to root for consistent theme with sudo
 mkdir -p /root/.config 2>/dev/null
-[[ -d "/home/$PRIMARY_USER/.config/nvim" ]] && cp -r "/home/$PRIMARY_USER/.config/nvim" /root/.config/ && info "âœ“ Root nvim configured"
+[[ -d "/home/$PRIMARY_USER/.config/nvim" ]] && cp -r "/home/$PRIMARY_USER/.config/nvim" /root/.config/ && info " * Root nvim configured"
 [[ -f "/home/$PRIMARY_USER/.config/x11/xresources" ]] && cp "/home/$PRIMARY_USER/.config/x11/xresources" /root/.Xresources
 
 info ""
@@ -2083,7 +2083,7 @@ info "After reboot: login and run 'startx'"
 # Cleanup: Remove temporary passwordless sudo
 info "Cleaning up temporary sudo configuration..."
 rm -f /etc/sudoers.d/parss-temp
-info "âœ“ Temporary sudo removed (security restored)"
+info " * Temporary sudo removed (security restored)"
 
 DESKTOP_SETUP_EOF
 
@@ -2308,28 +2308,28 @@ main() {
     log_info "  Encryption: Single passphrase for entire system"
     log_info ""
     log_info "Features:"
-    log_info "  âœ“ LUKS2 encryption (Argon2id KDF) - SINGLE PASSPHRASE"
-    log_info "  âœ“ BTRFS filesystem with automatic snapshots ($SNAPSHOT_RETENTION snapshots)"
-    log_info "  âœ“ Security hardening (sysctl + kernel parameters)"
-    log_info "  âœ“ Zen kernel for performance"
-    log_info "  âœ“ NetworkManager for networking"
-    log_info "  âœ“ SSH server enabled (root login allowed for development)"
-    log_info "  âœ“ Time synchronization (systemd-timesyncd)"
-    log_info "  âœ“ SSD TRIM optimization (fstrim.timer - weekly)"
-    log_info "  âœ“ zsh as default shell"
-    log_info "  âœ“ X11 graphics stack"
+    log_info "   * LUKS2 encryption (Argon2id KDF) - SINGLE PASSPHRASE"
+    log_info "   * BTRFS filesystem with automatic snapshots ($SNAPSHOT_RETENTION snapshots)"
+    log_info "   * Security hardening (sysctl + kernel parameters)"
+    log_info "   * Zen kernel for performance"
+    log_info "   * NetworkManager for networking"
+    log_info "   * SSH server enabled (root login allowed for development)"
+    log_info "   * Time synchronization (systemd-timesyncd)"
+    log_info "   * SSD TRIM optimization (fstrim.timer - weekly)"
+    log_info "   * zsh as default shell"
+    log_info "   * X11 graphics stack"
     if [[ "$ENABLE_NVIDIA_GPU" == "true" ]]; then
-        log_info "  âœ“ NVIDIA GPU drivers (RTX A5500 support)"
+        log_info "   * NVIDIA GPU drivers (RTX A5500 support)"
     fi
     if [[ "${DESKTOP_SETUP_COMPLETE:-false}" == "true" ]]; then
-        log_info "  âœ“ Desktop environment (dwm/st/dmenu/slstatus)"
-        log_info "  âœ“ Archrice dotfiles deployed"
+        log_info "   * Desktop environment (dwm/st/dmenu/slstatus)"
+        log_info "   * Archrice dotfiles deployed"
     fi
     log_info ""
 
     # Only show manual instructions if desktop was NOT installed
     if [[ "${DESKTOP_SETUP_COMPLETE:-false}" != "true" ]]; then
-        log_info "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
+        log_info " * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  *
         log_info ""
         log_info "OPTIONAL: Desktop Environment & Dotfiles Setup"
         log_info ""
@@ -2357,7 +2357,7 @@ main() {
         log_info ""
         log_info "After phase 14 completes, reboot and run 'startx' to launch your environment."
         log_info ""
-        log_info "â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”"
+        log_info " * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  *
         log_info ""
     fi
     log_info "Installation log: $LOG_FILE"
