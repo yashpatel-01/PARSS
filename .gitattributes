@@ -1,0 +1,26 @@
+# Shell scripts must always use LF line endings (Unix-style)
+*.sh text eol=lf
+
+# Python scripts
+*.py text eol=lf
+
+# Markdown and text files
+*.md text
+*.txt text
+
+# Configuration files
+*.conf text
+*.config text
+*.yml text
+*.yaml text
+*.json text
+
+# Ensure binary files are treated as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar.gz binary
