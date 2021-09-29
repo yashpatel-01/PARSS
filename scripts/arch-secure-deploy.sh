@@ -2132,6 +2132,403 @@ phase_13_final_verification() {
 }
 
 ################################################################################
+# INTEGRATED UTILITY FUNCTIONS
+################################################################################
+
+# System Health Check (integrated from system-health.sh)
+run_system_health() {
+    echo ""
+    echo -e "${CYAN}=== PARSS System Health Check ===${NC}"
+    echo "Date: $(date)"
+    echo "Hostname: $(hostname)"
+    echo ""
+
+    echo -e "${YELLOW}[1] Service Status${NC}"
+    local services=("NetworkManager" "sshd" "systemd-timesyncd" "fstrim.timer")
+    for svc in "${services[@]}"; do
+        if systemctl is-active --quiet "$svc" 2>/dev/null; then
+            echo -e "  ${GREEN}[OK]${NC} $svc is running"
+        else
+            echo -e "  ${RED}[--]${NC} $svc is INACTIVE"
+        fi
+    done
+
+    echo ""
+    echo -e "${YELLOW}[2] Disk Usage${NC}"
+    if command -v btrfs &>/dev/null; then
+        btrfs filesystem usage / --human-readable 2>/dev/null | head -n 8 || df -h /
+    else
+        df -h /
+    fi
+
+    echo ""
+    echo -e "${YELLOW}[3] Snapshot Status${NC}"
+    if [[ -d /.snapshots ]]; then
+        local count
+        count=$(btrfs subvolume list /.snapshots 2>/dev/null | wc -l || echo 0)
+        echo "  Total snapshots: $count"
+    else
+        echo "  Snapshot directory not found"
+    fi
+
+    echo ""
+    echo -e "${YELLOW}[4] LUKS / Encryption Status${NC}"
+    if [[ -f /etc/crypttab ]]; then
+        echo "  /etc/crypttab entries:"
+        grep -vE '^(#|$)' /etc/crypttab 2>/dev/null | sed 's/^/    /' || echo "    (no active entries)"
+    else
+        echo -e "  ${RED}[--]${NC} /etc/crypttab missing"
+    fi
+
+    if [[ -f /etc/default/grub ]]; then
+        if grep -q "cryptdevice=" /etc/default/grub; then
+            echo -e "  ${GREEN}[OK]${NC} GRUB has cryptdevice parameter"
+        else
+            echo -e "  ${RED}[--]${NC} cryptdevice missing from GRUB"
+        fi
+    fi
+
+    echo ""
+    echo -e "${YELLOW}[5] Memory & Load${NC}"
+    free -h | head -n 2
+    echo "  Load average: $(cat /proc/loadavg | cut -d' ' -f1-3)"
+
+    echo ""
+    echo -e "${GREEN}Health check complete.${NC}"
+    echo ""
+    read -p "Press Enter to return to menu..."
+}
+
+# Integrity Check (integrated from integrity-check.sh)
+run_integrity_check() {
+    echo ""
+    echo -e "${CYAN}=== PARSS Integrity Check (AIDE) ===${NC}"
+    echo ""
+
+    if ! command -v aide &>/dev/null; then
+        echo -e "${YELLOW}AIDE is not installed.${NC}"
+        read -p "Install AIDE now? (y/N): " install_aide
+        if [[ "$install_aide" =~ ^[yY]$ ]]; then
+            echo "Installing AIDE..."
+            sudo pacman -S --noconfirm aide
+            echo "Initializing AIDE database (this may take a while)..."
+            sudo aide --init
+            sudo mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
+            echo -e "${GREEN}AIDE initialized successfully.${NC}"
+        else
+            echo "Skipping AIDE installation."
+        fi
+        read -p "Press Enter to return to menu..."
+        return 0
+    fi
+
+    echo "Running AIDE integrity check..."
+    echo "(This may take several minutes)"
+    echo ""
+
+    if sudo aide --check 2>&1; then
+        echo ""
+        echo -e "${GREEN}System integrity verified: No changes detected.${NC}"
+    else
+        echo ""
+        echo -e "${RED}WARNING: Changes detected in filesystem!${NC}"
+        echo "Check /var/log/aide.log for details."
+    fi
+
+    echo ""
+    read -p "Press Enter to return to menu..."
+}
+
+# BTRFS Dashboard (integrated from btrfs-dashboard.sh)
+run_btrfs_dashboard() {
+    echo ""
+    echo -e "${CYAN}=== PARSS BTRFS Dashboard ===${NC}"
+    echo "Host: $(hostname)"
+    echo "Date: $(date)"
+    echo ""
+
+    echo -e "${YELLOW}[1] Block Devices${NC}"
+    lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS 2>/dev/null || lsblk
+
+    echo ""
+    echo -e "${YELLOW}[2] BTRFS Filesystems${NC}"
+    if command -v btrfs &>/dev/null; then
+        btrfs filesystem show 2>/dev/null || echo "  No BTRFS filesystems detected."
+    else
+        echo "  btrfs command not available."
+    fi
+
+    echo ""
+    echo -e "${YELLOW}[3] Root Filesystem Usage${NC}"
+    if command -v btrfs &>/dev/null; then
+        btrfs filesystem usage / --human-readable 2>/dev/null | head -n 15 || df -h /
+    else
+        df -h /
+    fi
+
+    echo ""
+    echo -e "${YELLOW}[4] BTRFS Subvolumes${NC}"
+    if command -v btrfs &>/dev/null; then
+        btrfs subvolume list / 2>/dev/null || echo "  No subvolumes or not a BTRFS root."
+    else
+        echo "  btrfs command not available."
+    fi
+
+    echo ""
+    echo -e "${YELLOW}[5] Snapshots${NC}"
+    if [[ -d /.snapshots ]]; then
+        btrfs subvolume list /.snapshots 2>/dev/null || echo "  No snapshots found."
+    else
+        echo "  /.snapshots directory not found."
+    fi
+
+    echo ""
+    echo -e "${GREEN}Dashboard complete.${NC}"
+    echo ""
+    read -p "Press Enter to return to menu..."
+}
+
+################################################################################
+# MAIN MENU SYSTEM
+################################################################################
+
+show_main_menu() {
+    while true; do
+        clear
+        echo -e "${CYAN}"
+        echo "================================================================================"
+        echo "     ____   _    ____  ____ ____"
+        echo "    |  _ \ / \  |  _ \/ ___/ ___|"
+        echo "    | |_) / _ \ | |_) \___ \___ \\"
+        echo "    |  __/ ___ \|  _ < ___) |__) |"
+        echo "    |_| /_/   \_\_| \_\____/____/"
+        echo ""
+        echo "        Personalized Arch Research Security System"
+        echo "================================================================================"
+        echo -e "${NC}"
+        echo ""
+        echo "  Main Menu:"
+        echo ""
+        echo -e "    ${GREEN}1)${NC}  Install Arch Linux (Full Installation)"
+        echo -e "    ${GREEN}2)${NC}  Install Desktop Environment Only (Phase 14)"
+        echo -e "    ${GREEN}3)${NC}  System Health Check"
+        echo -e "    ${GREEN}4)${NC}  BTRFS Dashboard"
+        echo -e "    ${GREEN}5)${NC}  Integrity Check (AIDE)"
+        echo -e "    ${GREEN}6)${NC}  Run Specific Phase"
+        echo -e "    ${GREEN}7)${NC}  Resume Installation (from checkpoint)"
+        echo ""
+        echo -e "    ${YELLOW}h)${NC}  Help / Usage"
+        echo -e "    ${RED}q)${NC}  Quit"
+        echo ""
+        echo "================================================================================"
+        echo ""
+        read -p "  Select option [1-7, h, q]: " choice
+
+        case "$choice" in
+            1)
+                clear
+                echo -e "${CYAN}Starting Full Arch Linux Installation...${NC}"
+                echo ""
+                read -p "This will install Arch Linux. Continue? (y/N): " confirm
+                if [[ "$confirm" =~ ^[yY]$ ]]; then
+                    run_full_installation
+                fi
+                ;;
+            2)
+                clear
+                echo -e "${CYAN}Installing Desktop Environment (Phase 14)...${NC}"
+                echo ""
+                phase_14_optional_desktop_setup
+                read -p "Press Enter to return to menu..."
+                ;;
+            3)
+                run_system_health
+                ;;
+            4)
+                run_btrfs_dashboard
+                ;;
+            5)
+                run_integrity_check
+                ;;
+            6)
+                show_phase_menu
+                ;;
+            7)
+                show_resume_menu
+                ;;
+            h|H)
+                show_usage
+                read -p "Press Enter to return to menu..."
+                ;;
+            q|Q|0)
+                echo ""
+                echo -e "${GREEN}Goodbye!${NC}"
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Invalid option. Please try again.${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+show_phase_menu() {
+    clear
+    echo -e "${CYAN}================================================================================${NC}"
+    echo "                         Run Specific Phase"
+    echo -e "${CYAN}================================================================================${NC}"
+    echo ""
+    echo "  Available Phases:"
+    echo ""
+    echo "    1   - Preflight checks"
+    echo "    1b  - Interactive configuration"
+    echo "    2   - Device configuration"
+    echo "    3   - Disk preparation"
+    echo "    4   - LUKS encryption"
+    echo "    5   - BTRFS filesystem"
+    echo "    6   - Base installation (pacstrap)"
+    echo "    7   - Mount configuration (fstab)"
+    echo "    8   - Bootloader configuration (GRUB)"
+    echo "    9   - System configuration"
+    echo "    10  - User setup"
+    echo "    11  - Security hardening"
+    echo "    12  - BTRFS snapshots"
+    echo "    13  - Final verification"
+    echo "    14  - Desktop environment"
+    echo ""
+    echo "    b   - Back to main menu"
+    echo ""
+    read -p "  Enter phase number: " phase_num
+
+    if [[ "$phase_num" == "b" || "$phase_num" == "B" ]]; then
+        return
+    fi
+
+    case "$phase_num" in
+        1)  phase_1_preflight_checks ;;
+        1b) phase_1b_interactive_configuration ;;
+        2)  phase_2_device_configuration ;;
+        3)  phase_3_disk_preparation ;;
+        4)  phase_4_luks_encryption ;;
+        5)  phase_5_btrfs_filesystem ;;
+        6)  phase_6_base_installation ;;
+        7)  phase_7_mount_configuration ;;
+        8)  phase_8_chroot_configuration ;;
+        9)  phase_9_system_configuration ;;
+        10) phase_10_user_setup ;;
+        11) phase_11_security_hardening ;;
+        12) phase_12_snapshot_automation ;;
+        13) phase_13_final_verification ;;
+        14) phase_14_optional_desktop_setup ;;
+        *)  echo -e "${RED}Invalid phase number.${NC}" ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to return to menu..."
+}
+
+show_resume_menu() {
+    clear
+    echo -e "${CYAN}================================================================================${NC}"
+    echo "                         Resume Installation"
+    echo -e "${CYAN}================================================================================${NC}"
+    echo ""
+
+    if [[ -f "$STATE_FILE" ]]; then
+        echo "  Found state file: $STATE_FILE"
+        echo ""
+        echo "  Saved state:"
+        cat "$STATE_FILE" | sed 's/^/    /'
+        echo ""
+    else
+        echo -e "  ${YELLOW}No saved state found.${NC}"
+        echo ""
+    fi
+
+    echo "  Enter the phase number to resume from (1-14):"
+    echo "  Or press 'b' to go back."
+    echo ""
+    read -p "  Resume from phase: " resume_phase
+
+    if [[ "$resume_phase" == "b" || "$resume_phase" == "B" ]]; then
+        return
+    fi
+
+    if [[ "$resume_phase" =~ ^[0-9]+$ ]]; then
+        echo ""
+        echo -e "${CYAN}Resuming installation from phase $resume_phase...${NC}"
+        run_installation_from_phase "$resume_phase"
+    else
+        echo -e "${RED}Invalid input.${NC}"
+        sleep 1
+    fi
+}
+
+run_full_installation() {
+    run_installation_from_phase 1
+}
+
+run_installation_from_phase() {
+    local start_phase="${1:-1}"
+
+    # Initialize logging
+    mkdir -p "$LOG_DIR"
+    exec > >(tee -a "$LOG_FILE") 2> >(tee -a "$ERROR_LOG" >&2)
+
+    echo ""
+    echo "================================================================================"
+    echo "ARCH LINUX SECURE RESEARCH DEPLOYMENT - PRODUCTION v2.2"
+    echo "================================================================================"
+    log_info "Installation started: $(date)"
+    log_info "Log file: $LOG_FILE"
+    log_info "Error log: $ERROR_LOG"
+    log_info "State file: $STATE_FILE"
+
+    # Execute phases (conditionally based on start_phase)
+    [[ $start_phase -le 1 ]] && { phase_1_preflight_checks || return 1; }
+    [[ $start_phase -le 1 ]] && { phase_1b_interactive_configuration || return 1; }
+    [[ $start_phase -le 2 ]] && { phase_2_device_configuration || return 1; }
+    [[ $start_phase -le 3 ]] && { phase_3_disk_preparation || return 1; }
+    [[ $start_phase -le 4 ]] && { phase_4_luks_encryption || return 1; }
+    [[ $start_phase -le 5 ]] && { phase_5_btrfs_filesystem || return 1; }
+    [[ $start_phase -le 6 ]] && { phase_6_base_installation || return 1; }
+    [[ $start_phase -le 7 ]] && { phase_7_mount_configuration || return 1; }
+    [[ $start_phase -le 8 ]] && { phase_8_chroot_configuration || return 1; }
+    [[ $start_phase -le 9 ]] && { phase_9_system_configuration || return 1; }
+    [[ $start_phase -le 10 ]] && { phase_10_user_setup || return 1; }
+    [[ $start_phase -le 11 ]] && { phase_11_security_hardening || return 1; }
+    [[ $start_phase -le 12 ]] && { phase_12_snapshot_automation || return 1; }
+    [[ $start_phase -le 14 ]] && phase_14_optional_desktop_setup
+    [[ $start_phase -le 13 ]] && { phase_13_final_verification || return 1; }
+
+    # Completion summary
+    show_completion_summary
+}
+
+show_completion_summary() {
+    log_section "INSTALLATION COMPLETED SUCCESSFULLY"
+
+    log_info ""
+    log_info "Next steps:"
+    log_info "  1. Remove installation media (USB/ISO)"
+    log_info "  2. Reboot system: reboot"
+    log_info "  3. Enter your LUKS passphrase at boot"
+    log_info "  4. Login with user: $PRIMARY_USER"
+
+    if [[ "${DESKTOP_SETUP_COMPLETE:-false}" == "true" ]]; then
+        log_info "  5. Run 'startx' to launch your desktop environment"
+    else
+        log_info "  5. (Optional) Run installer again with menu option 2 for desktop"
+    fi
+
+    log_info ""
+    log_info "Installation log: $LOG_FILE"
+    log_info "Installation completed: $(date)"
+    log_info ""
+}
+
+################################################################################
 # MAIN EXECUTION
 ################################################################################
 
@@ -2140,21 +2537,34 @@ show_usage() {
 Usage: bash arch-secure-deploy.sh [OPTIONS]
 
 Options:
+  --menu                Show interactive menu (default if no args)
+
+  --install             Start full installation (non-interactive)
+
   --start-from PHASE    Start from a specific phase (1-14)
                         Example: --start-from 14
 
   --phase PHASE         Run only a specific phase
                         Example: --phase 14
 
+  --health              Run system health check
+
+  --btrfs               Show BTRFS dashboard
+
+  --integrity           Run integrity check (AIDE)
+
   --skip-unmount        Skip unmounting in phase 13 (for testing)
 
   --help, -h            Show this help message
 
 Examples:
-  # Full installation
+  # Interactive menu (recommended)
   bash arch-secure-deploy.sh
 
-  # Test desktop setup only (assumes system is installed and mounted)
+  # Full installation (non-interactive start)
+  bash arch-secure-deploy.sh --install
+
+  # Desktop setup only
   bash arch-secure-deploy.sh --phase 14
 
   # Resume from phase 14
@@ -2184,13 +2594,28 @@ EOF
 }
 
 main() {
+    # If no arguments, show interactive menu
+    if [[ $# -eq 0 ]]; then
+        show_main_menu
+        exit 0
+    fi
+
     # Parse command-line arguments
-    local START_FROM_PHASE=1
+    local START_FROM_PHASE=""
     local RUN_ONLY_PHASE=""
     local SKIP_UNMOUNT=false
+    local RUN_INSTALL=false
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
+            --menu)
+                show_main_menu
+                exit 0
+                ;;
+            --install)
+                RUN_INSTALL=true
+                shift
+                ;;
             --start-from)
                 START_FROM_PHASE="$2"
                 shift 2
@@ -2198,6 +2623,18 @@ main() {
             --phase)
                 RUN_ONLY_PHASE="$2"
                 shift 2
+                ;;
+            --health)
+                run_system_health
+                exit 0
+                ;;
+            --btrfs)
+                run_btrfs_dashboard
+                exit 0
+                ;;
+            --integrity)
+                run_integrity_check
+                exit 0
                 ;;
             --skip-unmount)
                 SKIP_UNMOUNT=true
@@ -2222,13 +2659,9 @@ main() {
     # Load previous state if exists
     load_state
 
-    log_section "ARCH LINUX SECURE RESEARCH DEPLOYMENT - PRODUCTION v2.2"
-    log_info "Installation started: $(date)"
-    log_info "Log file: $LOG_FILE"
-    log_info "Error log: $ERROR_LOG"
-    log_info "State file: $STATE_FILE"
-
+    # Run specific phase only
     if [[ -n "$RUN_ONLY_PHASE" ]]; then
+        log_section "ARCH LINUX SECURE RESEARCH DEPLOYMENT - PRODUCTION v2.2"
         log_info "Running ONLY phase $RUN_ONLY_PHASE (testing mode)"
         case "$RUN_ONLY_PHASE" in
             14) phase_14_optional_desktop_setup ;;
@@ -2251,107 +2684,20 @@ main() {
         return 0
     fi
 
-    if [[ "$START_FROM_PHASE" != "1" ]]; then
-        log_info "Starting from phase $START_FROM_PHASE (skipping earlier phases)"
+    # Start from specific phase
+    if [[ -n "$START_FROM_PHASE" ]]; then
+        run_installation_from_phase "$START_FROM_PHASE"
+        return 0
     fi
 
-    # Execute phases (conditionally based on START_FROM_PHASE)
-    [[ $START_FROM_PHASE -le 1 ]] && { phase_1_preflight_checks || exit 1; }
-    [[ $START_FROM_PHASE -le 1 ]] && { phase_1b_interactive_configuration || exit 1; }
-    [[ $START_FROM_PHASE -le 2 ]] && { phase_2_device_configuration || exit 1; }
-    [[ $START_FROM_PHASE -le 3 ]] && { phase_3_disk_preparation || exit 1; }
-    [[ $START_FROM_PHASE -le 4 ]] && { phase_4_luks_encryption || exit 1; }
-    [[ $START_FROM_PHASE -le 5 ]] && { phase_5_btrfs_filesystem || exit 1; }
-    [[ $START_FROM_PHASE -le 6 ]] && { phase_6_base_installation || exit 1; }
-    [[ $START_FROM_PHASE -le 7 ]] && { phase_7_mount_configuration || exit 1; }
-    [[ $START_FROM_PHASE -le 8 ]] && { phase_8_chroot_configuration || exit 1; }
-    [[ $START_FROM_PHASE -le 9 ]] && { phase_9_system_configuration || exit 1; }
-    [[ $START_FROM_PHASE -le 10 ]] && { phase_10_user_setup || exit 1; }
-    [[ $START_FROM_PHASE -le 11 ]] && { phase_11_security_hardening || exit 1; }
-    [[ $START_FROM_PHASE -le 12 ]] && { phase_12_snapshot_automation || exit 1; }
-    [[ $START_FROM_PHASE -le 14 ]] && phase_14_optional_desktop_setup
-    [[ $START_FROM_PHASE -le 13 ]] && [[ "$SKIP_UNMOUNT" != "true" ]] && { phase_13_final_verification || exit 1; }
-
-    # Completion summary
-    log_section "INSTALLATION COMPLETED SUCCESSFULLY"
-
-    log_info ""
-    log_info "Next steps:"
-    log_info "  1. Remove installation media (USB/ISO)"
-    log_info "  2. Reboot system: reboot"
-    log_info "  3. Enter your LUKS passphrase at boot"
-    log_info "  4. Login with user: $PRIMARY_USER"
-
-    # Check if desktop was installed (variable is exported by phase_14 via save_state)
-    if [[ "${DESKTOP_SETUP_COMPLETE:-false}" == "true" ]]; then
-        log_info "  5. Run 'startx' to launch your desktop environment"
-    else
-        log_info "  5. (Optional) Rerun installer with --phase 14 for GUI (see below)"
+    # Full installation
+    if [[ "$RUN_INSTALL" == "true" ]]; then
+        run_full_installation
+        return 0
     fi
-    log_info ""
-    log_info "System Information:"
-    log_info "  Hostname: $HOSTNAME_SYS"
-    log_info "  Root partition: $((AVAILABLE_SPACE_GB - 1))GB (encrypted BTRFS with all subvolumes)"
-    log_info "  User: $PRIMARY_USER"
-    log_info "  LUKS device name: $LUKS_ROOT_NAME"
-    log_info "  Encryption: Single passphrase for entire system"
-    log_info ""
-    log_info "Features:"
-    log_info "   * LUKS2 encryption (Argon2id KDF) - SINGLE PASSPHRASE"
-    log_info "   * BTRFS filesystem with automatic snapshots ($SNAPSHOT_RETENTION snapshots)"
-    log_info "   * Security hardening (sysctl + kernel parameters)"
-    log_info "   * Zen kernel for performance"
-    log_info "   * NetworkManager for networking"
-    log_info "   * SSH server enabled (root login allowed for development)"
-    log_info "   * Time synchronization (systemd-timesyncd)"
-    log_info "   * SSD TRIM optimization (fstrim.timer - weekly)"
-    log_info "   * zsh as default shell"
-    log_info "   * X11 graphics stack"
-    if [[ "$ENABLE_NVIDIA_GPU" == "true" ]]; then
-        log_info "   * NVIDIA GPU drivers (RTX A5500 support)"
-    fi
-    if [[ "${DESKTOP_SETUP_COMPLETE:-false}" == "true" ]]; then
-        log_info "   * Desktop environment (dwm/st/dmenu/slstatus)"
-        log_info "   * Archrice dotfiles deployed"
-    fi
-    log_info ""
 
-    # Only show manual instructions if desktop was NOT installed
-    if [[ "${DESKTOP_SETUP_COMPLETE:-false}" != "true" ]]; then
-        log_info "=================================================================================="
-        log_info ""
-        log_info "OPTIONAL: Desktop Environment & Dotfiles Setup"
-        log_info ""
-        log_info "The base system is complete. To add a desktop environment (dwm/st/dmenu)"
-        log_info "and your dotfiles, follow these steps AFTER rebooting:"
-        log_info ""
-        log_info "1. Boot into the new system and login as: $PRIMARY_USER"
-        log_info ""
-        log_info "2. Mount your system (if not already mounted):"
-        log_info "   sudo cryptsetup luksOpen /dev/sdXY $LUKS_ROOT_NAME"
-        log_info "   sudo mount -o subvol=@ /dev/mapper/$LUKS_ROOT_NAME /mnt/root"
-        log_info "   sudo mount /dev/sdX1 /mnt/root/boot"
-        log_info ""
-        log_info "3. Clone PARSS and run phase 14:"
-        log_info "   cd /tmp"
-        log_info "   git clone https://github.com/yashpatel-01/PARSS.git"
-        log_info "   cd PARSS"
-        log_info "   sudo bash scripts/arch-secure-deploy.sh --phase 14"
-        log_info ""
-        log_info "This will:"
-        log_info "  - Clone your archrice dotfiles (https://github.com/yashpatel-01/archrice)"
-        log_info "  - Install packages from progs.csv (suckless tools, browsers, etc.)"
-        log_info "  - Deploy dotfiles to your home directory"
-        log_info "  - Build suckless software (dwm, st, dmenu, slstatus)"
-        log_info ""
-        log_info "After phase 14 completes, reboot and run 'startx' to launch your environment."
-        log_info ""
-        log_info "=================================================================================="
-        log_info ""
-    fi
-    log_info "Installation log: $LOG_FILE"
-    log_info "Installation completed: $(date)"
-    log_info ""
+    # Default: show menu (this shouldn't be reached, but as fallback)
+    show_main_menu
 }
 
 # Execute main
