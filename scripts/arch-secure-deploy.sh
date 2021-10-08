@@ -2196,7 +2196,8 @@ run_system_health() {
     echo ""
     echo -e "${GREEN}Health check complete.${NC}"
     echo ""
-    read -p "Press Enter to return to menu..."
+    # Only wait for Enter if running from menu (not CLI)
+    [[ "${MENU_MODE:-false}" == "true" ]] && read -p "Press Enter to return to menu..."
 }
 
 # Integrity Check (integrated from integrity-check.sh)
@@ -2236,7 +2237,7 @@ run_integrity_check() {
     fi
 
     echo ""
-    read -p "Press Enter to return to menu..."
+    [[ "${MENU_MODE:-false}" == "true" ]] && read -p "Press Enter to return to menu..."
 }
 
 # BTRFS Dashboard (integrated from btrfs-dashboard.sh)
@@ -2285,7 +2286,7 @@ run_btrfs_dashboard() {
     echo ""
     echo -e "${GREEN}Dashboard complete.${NC}"
     echo ""
-    read -p "Press Enter to return to menu..."
+    [[ "${MENU_MODE:-false}" == "true" ]] && read -p "Press Enter to return to menu..."
 }
 
 ################################################################################
@@ -2293,6 +2294,7 @@ run_btrfs_dashboard() {
 ################################################################################
 
 show_main_menu() {
+    MENU_MODE=true
     while true; do
         clear
         echo -e "${CYAN}"
@@ -2471,10 +2473,14 @@ run_full_installation() {
 
 run_installation_from_phase() {
     local start_phase="${1:-1}"
+    local skip_unmount="${2:-false}"
 
     # Initialize logging
     mkdir -p "$LOG_DIR"
     exec > >(tee -a "$LOG_FILE") 2> >(tee -a "$ERROR_LOG" >&2)
+
+    # Load previous state if exists
+    load_state
 
     echo ""
     echo "================================================================================"
@@ -2500,7 +2506,7 @@ run_installation_from_phase() {
     [[ $start_phase -le 11 ]] && { phase_11_security_hardening || return 1; }
     [[ $start_phase -le 12 ]] && { phase_12_snapshot_automation || return 1; }
     [[ $start_phase -le 14 ]] && phase_14_optional_desktop_setup
-    [[ $start_phase -le 13 ]] && { phase_13_final_verification || return 1; }
+    [[ $start_phase -le 13 ]] && [[ "$skip_unmount" != "true" ]] && { phase_13_final_verification || return 1; }
 
     # Completion summary
     show_completion_summary
@@ -2686,13 +2692,13 @@ main() {
 
     # Start from specific phase
     if [[ -n "$START_FROM_PHASE" ]]; then
-        run_installation_from_phase "$START_FROM_PHASE"
+        run_installation_from_phase "$START_FROM_PHASE" "$SKIP_UNMOUNT"
         return 0
     fi
 
     # Full installation
     if [[ "$RUN_INSTALL" == "true" ]]; then
-        run_full_installation
+        run_installation_from_phase 1 "$SKIP_UNMOUNT"
         return 0
     fi
 
