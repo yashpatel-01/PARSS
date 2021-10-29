@@ -305,7 +305,7 @@ validate_block_device() {
     if [[ -n "$mounted_info" ]]; then
         log_warn "Device $device or its partitions are currently mounted:"
         echo "$mounted_info" | tee -a "$LOG_FILE"
-        echo ""
+        echo "" >&2
         read -p "Attempt to auto-unmount and close LUKS on $device? (y/n) [y]: " auto_unmount
         auto_unmount=${auto_unmount:-y}
         if [[ "$auto_unmount" =~ ^[yY]([eE][sS])?$ ]]; then
@@ -356,17 +356,16 @@ confirm_destructive_operation() {
     local size_gb
     size_gb=$(lsblk -bnd -o SIZE "$device" | awk '{printf "%.0f", $1/(1024**3)}')
 
-    echo ""
-    echo -e "${RED}=============================================================${NC}"
-    echo -e "${RED}            ** DESTRUCTIVE OPERATION WARNING **${NC}"
-    echo -e "${RED}=============================================================${NC}"
-    echo ""
-    echo "This script will ask for custom names and settings."
-    echo "  1. Confirm you selected the CORRECT device"
-    echo "  2. Confirm you have backed up all important data"
-    echo "  3. Type 'YES' to proceed"
-    echo ""
-
+    echo "" >&2
+    echo -e "${RED}=============================================================${NC}" >&2
+    echo -e "${RED}            ** DESTRUCTIVE OPERATION WARNING **${NC}" >&2
+    echo -e "${RED}=============================================================${NC}" >&2
+    echo "" >&2
+    echo "WARNING: This will DESTROY all data on the selected device!" >&2
+    echo "  1. Confirm you selected the CORRECT device" >&2
+    echo "  2. Confirm you have backed up all important data" >&2
+    echo "  3. Type 'y' or 'Y' to proceed" >&2
+    echo "" >&2
     read -p "Type 'y' or 'Y' to confirm: " confirmation
     echo
 
@@ -432,22 +431,22 @@ validate_passphrase_strength() {
 prompt_luks_passphrase() {
     log_section "LUKS ENCRYPTION PASSPHRASE SETUP"
 
-    echo ""
-    echo -e "${CYAN}=============================================================${NC}"
-    echo -e "${CYAN}                  ENCRYPTION PASSPHRASE SETUP                    ${NC}"
-    echo -e "${CYAN}=============================================================${NC}"
-    echo ""
-    echo "Passphrase Requirements:"
-    echo "  - Minimum 12 characters"
-    echo "  - At least one uppercase letter (A-Z)"
-    echo "  - At least one lowercase letter (a-z)"
-    echo "  - At least one number (0-9)"
-    echo "  - Special characters recommended"
-    echo ""
-    echo -e "${YELLOW}  You will need this passphrase to boot your system every time${NC}"
-    echo -e "${YELLOW}  Write it down and store it in a secure location${NC}"
-    echo -e "${YELLOW}  This passphrase will unlock the encrypted root partition (containing all BTRFS subvolumes)${NC}"
-    echo ""
+    echo "" >&2
+    echo -e "${CYAN}=============================================================${NC}" >&2
+    echo -e "${CYAN}                  ENCRYPTION PASSPHRASE SETUP                    ${NC}" >&2
+    echo -e "${CYAN}=============================================================${NC}" >&2
+    echo "" >&2
+    echo "Passphrase Requirements:" >&2
+    echo "  - Minimum 12 characters" >&2
+    echo "  - At least one uppercase letter (A-Z)" >&2
+    echo "  - At least one lowercase letter (a-z)" >&2
+    echo "  - At least one number (0-9)" >&2
+    echo "  - Special characters recommended" >&2
+    echo "" >&2
+    echo -e "${YELLOW}  You will need this passphrase to boot your system every time${NC}" >&2
+    echo -e "${YELLOW}  Write it down and store it in a secure location${NC}" >&2
+    echo -e "${YELLOW}  This passphrase will unlock the encrypted root partition (containing all BTRFS subvolumes)${NC}" >&2
+    echo "" >&2
 
     local passphrase=""
     local passphrase_confirm=""
@@ -455,7 +454,7 @@ prompt_luks_passphrase() {
 
     while [[ $attempts -lt 3 ]]; do
         read -sp "Enter passphrase: " passphrase
-        echo ""
+        echo "" >&2
 
         if ! validate_passphrase_strength "$passphrase"; then
             log_warn "Passphrase does not meet requirements. Try again."
@@ -464,7 +463,7 @@ prompt_luks_passphrase() {
         fi
 
         read -sp "Confirm passphrase: " passphrase_confirm
-        echo ""
+        echo "" >&2
 
         if [[ "$passphrase" != "$passphrase_confirm" ]]; then
             log_warn "Passphrases do not match. Try again."
@@ -485,33 +484,30 @@ prompt_luks_passphrase() {
 
 # Prompt for partition size
 prompt_partition_size() {
-    echo ""
-    echo -e "${CYAN}=============================================================${NC}"
-    echo -e "${CYAN}        CUSTOM PARTITION SIZE CONFIGURATION${NC}"
-    echo -e "${CYAN}=============================================================${NC}"
-    echo ""
-    echo "Total available space: ${AVAILABLE_SPACE_GB}GB"
-
-    echo ""
-    echo "Configuration:"
-    echo "  1. EFI System Partition: 1GB (FAT32)"
-    echo "  2. Root partition with BTRFS subvolumes (@, @home, @var, @snapshots, etc.): All remaining space"
-    echo ""
-    echo "BTRFS subvolumes will be created on the root partition:"
-    echo "  - @ (root filesystem)"
-    echo "  - @home (user home directories)"
-    echo "  - @var (variable data)"
-    echo "  - @snapshots (BTRFS snapshots)"
-    echo "  - @varcache (package cache)"
-    echo "  - @log (system logs)"
-    echo ""
-
-    echo -e "${GREEN}Partition Layout:${NC}"
-    echo "  EFI System Partition: 1GB"
-    echo "  Root partition:       $((AVAILABLE_SPACE_GB - 1))GB (all BTRFS subvolumes)"
-    echo "  Total:                ${AVAILABLE_SPACE_GB}GB"
-    echo ""
-
+    echo "" >&2
+    echo -e "${CYAN}=============================================================${NC}" >&2
+    echo -e "${CYAN}        CUSTOM PARTITION SIZE CONFIGURATION${NC}" >&2
+    echo -e "${CYAN}=============================================================${NC}" >&2
+    echo "" >&2
+    echo "Total available space: ${AVAILABLE_SPACE_GB}GB" >&2
+    echo "" >&2
+    echo "Configuration:" >&2
+    echo "  1. EFI System Partition: 1GB (FAT32)" >&2
+    echo "  2. Root partition with BTRFS subvolumes (@, @home, @var, @snapshots, etc.): All remaining space" >&2
+    echo "" >&2
+    echo "BTRFS subvolumes will be created on the root partition:" >&2
+    echo "  - @ (root filesystem)" >&2
+    echo "  - @home (user home directories)" >&2
+    echo "  - @var (variable data)" >&2
+    echo "  - @snapshots (BTRFS snapshots)" >&2
+    echo "  - @varcache (package cache)" >&2
+    echo "  - @log (system logs)" >&2
+    echo "" >&2
+    echo -e "${GREEN}Partition Layout:${NC}" >&2
+    echo "  EFI System Partition: 1GB" >&2
+    echo "  Root partition:       $((AVAILABLE_SPACE_GB - 1))GB (all BTRFS subvolumes)" >&2
+    echo "  Total:                ${AVAILABLE_SPACE_GB}GB" >&2
+    echo "" >&2
     read -p "Proceed with this configuration? (y/n) [y]: " confirm_partition
     confirm_partition=${confirm_partition:-y}
 
@@ -594,21 +590,21 @@ phase_1b_interactive_configuration() {
 
     log_section "PHASE 1B: INTERACTIVE SYSTEM CONFIGURATION"
 
-    echo ""
-    echo -e "${CYAN}=============================================================${NC}"
-    echo -e "${CYAN}         CUSTOM SYSTEM CONFIGURATION (Interactive)          ${NC}"
-    echo -e "${CYAN}=============================================================${NC}"
-    echo ""
-    echo "This script will ask for custom names and settings."
-    echo "Press Enter to use default values shown in [brackets]"
-    echo ""
+    echo "" >&2
+    echo -e "${CYAN}=============================================================${NC}" >&2
+    echo -e "${CYAN}         CUSTOM SYSTEM CONFIGURATION (Interactive)          ${NC}" >&2
+    echo -e "${CYAN}=============================================================${NC}" >&2
+    echo "" >&2
+    echo "This script will ask for custom names and settings." >&2
+    echo "Press Enter to use default values shown in [brackets]" >&2
+    echo "" >&2
 
     # SECTION 1: SYSTEM IDENTIFICATION
     log_info "SECTION 1: System Identification"
-    echo ""
+    echo "" >&2
 
     log_info "Enter system hostname (computer name)"
-    echo "Examples: thinkpad-research, arch-laptop, secure-dev"
+    echo "Examples: thinkpad-research, arch-laptop, secure-dev" >&2
     read -p "Hostname [devta]: " input_hostname
     HOSTNAME_SYS="${input_hostname:-devta}"
 
@@ -620,7 +616,7 @@ phase_1b_interactive_configuration() {
     log_success "Hostname: $HOSTNAME_SYS"
 
     log_info "Enter primary username (login account)"
-    echo "Examples: patel, research, developer"
+    echo "Examples: patel, research, developer" >&2
     read -p "Username [patel]: " input_username
     PRIMARY_USER="${input_username:-patel}"
 
@@ -634,7 +630,7 @@ phase_1b_interactive_configuration() {
     # SECTION 2: STORAGE & BTRFS CONFIGURATION
     log_info ""
     log_info "SECTION 2: Storage & BTRFS Configuration"
-    echo ""
+    echo "" >&2
 
     # BTRFS subvolumes use standard naming convention:
     # @, @home, @var, @snapshots, @varcache, @log (no customization needed)
@@ -642,21 +638,21 @@ phase_1b_interactive_configuration() {
     log_success "BTRFS layout configured with standard subvolume names"
 
     log_info "Include @log BTRFS subvolume?"
-    echo "(Separates systemd journal - improves snapshot efficiency)"
+    echo "(Separates systemd journal - improves snapshot efficiency)" >&2
     read -p "Include @log (y/n) [y]: " input_log
     ADD_LOG_SUBVOLUME="${input_log:-y}"
     [[ "$ADD_LOG_SUBVOLUME" =~ ^[yY]$ ]] && ADD_LOG_SUBVOLUME="true" || ADD_LOG_SUBVOLUME="false"
     log_success "@log subvolume: $ADD_LOG_SUBVOLUME"
 
     log_info "Enable NVIDIA GPU drivers?"
-    echo "(For RTX A5500 CUDA support)"
+    echo "(For RTX A5500 CUDA support)" >&2
     read -p "Enable NVIDIA (y/n) [y]: " input_gpu
     ENABLE_NVIDIA_GPU="${input_gpu:-y}"
     [[ "$ENABLE_NVIDIA_GPU" =~ ^[yY]$ ]] && ENABLE_NVIDIA_GPU="true" || ENABLE_NVIDIA_GPU="false"
     log_success "NVIDIA GPU support: $ENABLE_NVIDIA_GPU"
 
     log_info "Snapshot retention count"
-    echo "(Number of weekly snapshots to keep: 12 = ~3 months)"
+    echo "(Number of weekly snapshots to keep: 12 = ~3 months)" >&2
     read -p "Snapshot retention [12]: " input_snapshots
     SNAPSHOT_RETENTION="${input_snapshots:-12}"
 
@@ -668,25 +664,25 @@ phase_1b_interactive_configuration() {
     log_success "Snapshot retention: $SNAPSHOT_RETENTION"
 
     log_info "System timezone"
-    echo ""
-    echo "Common timezones:"
-    echo "  UTC                     (Universal Coordinated Time)"
-    echo "  America/New_York        (US Eastern)"
-    echo "  America/Chicago         (US Central)"
-    echo "  America/Denver          (US Mountain)"
-    echo "  America/Los_Angeles     (US Pacific)"
-    echo "  Europe/London           (UK)"
-    echo "  Europe/Paris            (Central Europe)"
-    echo "  Asia/Tokyo              (Japan)"
-    echo "  Asia/Shanghai           (China)"
-    echo "  Asia/Kolkata            (India)"
-    echo "  Australia/Sydney        (Australia)"
-    echo ""
-    echo "To find your timezone:"
-    echo "  • List all: timedatectl list-timezones"
-    echo "  • Search:   timedatectl list-timezones | grep -i <region>"
-    echo "  • Example:  timedatectl list-timezones | grep -i america"
-    echo ""
+    echo "" >&2
+    echo "Common timezones:" >&2
+    echo "  UTC                     (Universal Coordinated Time)" >&2
+    echo "  America/New_York        (US Eastern)" >&2
+    echo "  America/Chicago         (US Central)" >&2
+    echo "  America/Denver          (US Mountain)" >&2
+    echo "  America/Los_Angeles     (US Pacific)" >&2
+    echo "  Europe/London           (UK)" >&2
+    echo "  Europe/Paris            (Central Europe)" >&2
+    echo "  Asia/Tokyo              (Japan)" >&2
+    echo "  Asia/Shanghai           (China)" >&2
+    echo "  Asia/Kolkata            (India)" >&2
+    echo "  Australia/Sydney        (Australia)" >&2
+    echo "" >&2
+    echo "To find your timezone:" >&2
+    echo "  - List all: timedatectl list-timezones" >&2
+    echo "  - Search:   timedatectl list-timezones | grep -i <region>" >&2
+    echo "  - Example:  timedatectl list-timezones | grep -i america" >&2
+    echo "" >&2
     read -p "Enter timezone [UTC]: " input_timezone
     SYSTEM_TIMEZONE="${input_timezone:-UTC}"
 
@@ -702,8 +698,7 @@ phase_1b_interactive_configuration() {
     log_info "============================================================="
     log_info "INSTALLATION SUMMARY - Please Review"
     log_info "============================================================="
-    echo ""
-
+    echo "" >&2
     read -p "Proceed with installation? (type 'y' to confirm): " final_confirm
 
     if [[ ! "$final_confirm" =~ ^[yY]([eE][sS])?$ ]]; then
@@ -735,7 +730,7 @@ phase_2_device_configuration() {
     log_section "PHASE 2: DEVICE & PARTITION CONFIGURATION"
 
     log_info "Available block devices:"
-    echo ""
+    echo "" >&2
 
     # Get list of block devices
     local -a devices
@@ -755,12 +750,12 @@ phase_2_device_configuration() {
         local size=$(lsblk -d -n -o SIZE "$full_path")
         local type=$(lsblk -d -n -o TYPE "$full_path")
 
-        echo "  ($i) $full_path - $size - $type"
+        echo "  ($i) $full_path - $size - $type" >&2
         device_menu[$i]="$full_path"
         ((i++))
     done
 
-    echo ""
+    echo "" >&2
 
     # Get user selection (auto-select if only one device)
     if [[ ${#devices[@]} -eq 1 ]]; then
@@ -1850,20 +1845,19 @@ TIP: Can install later with:
    sudo bash arch-secure-deploy.sh --phase 14"
 
     # Desktop environment prompt
-    echo ""
-    echo ""
-    echo "==============================================================================="
-    echo "                 DESKTOP ENVIRONMENT INSTALLATION"
-    echo "                          ** PHASE 14 **"
-    echo "==============================================================================="
-    echo ""
-    echo "$prompt_message"
-    echo ""
-    echo "==============================================================================="
-    echo "               INSTALL DESKTOP ENVIRONMENT NOW?"
-    echo "==============================================================================="
-    echo ""
-
+    echo "" >&2
+    echo "" >&2
+    echo "===============================================================================" >&2
+    echo "                 DESKTOP ENVIRONMENT INSTALLATION" >&2
+    echo "                          ** PHASE 14 **" >&2
+    echo "===============================================================================" >&2
+    echo "" >&2
+    echo "$prompt_message" >&2
+    echo "" >&2
+    echo "===============================================================================" >&2
+    echo "               INSTALL DESKTOP ENVIRONMENT NOW?" >&2
+    echo "===============================================================================" >&2
+    echo "" >&2
     local response
     read -p "  Your choice (y/N): " response
 
