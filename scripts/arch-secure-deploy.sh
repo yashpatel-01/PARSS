@@ -684,21 +684,17 @@ To find your timezone:
   - Example:  timedatectl list-timezones | grep -i america
 
 EOF
-    
-    # Loop until valid timezone is entered
-    while true; do
-        read -p "Enter timezone [America/New_York]: " input_timezone
-        SYSTEM_TIMEZONE="${input_timezone:-America/New_York}"
-        
-        # Validate timezone exists
-        if [[ -f "/usr/share/zoneinfo/$SYSTEM_TIMEZONE" ]]; then
-            log_success "Timezone: $SYSTEM_TIMEZONE"
-            break
-        else
-            log_warn "Timezone '$SYSTEM_TIMEZONE' not found. Please try again."
-            echo "Hint: Use exact format like 'America/New_York' (case-sensitive)" >&2
-        fi
-    done
+
+    # Single prompt: default to America/New_York on blank or invalid input
+    read -p "Enter timezone [America/New_York]: " input_timezone
+    SYSTEM_TIMEZONE="${input_timezone:-America/New_York}"
+
+    # Validate timezone exists, otherwise fall back to America/New_York
+    if [[ ! -f "/usr/share/zoneinfo/$SYSTEM_TIMEZONE" ]]; then
+        log_warn "Timezone '$SYSTEM_TIMEZONE' not found, using America/New_York"
+        SYSTEM_TIMEZONE="America/New_York"
+    fi
+    log_success "Timezone: $SYSTEM_TIMEZONE"
 
     # CONFIRMATION
     log_info ""
@@ -1611,17 +1607,17 @@ EOF
     log_info "Enabling SSH service..."
     arch-chroot "$MOUNT_ROOT" systemctl enable sshd
 
-    # Configure SSH to allow root login with password (for development/testing)
-    # For production, consider using key-based authentication only
+    # Configure SSH: disable root login by default for security
+    # Users should log in as their primary user and use sudo as needed
     if [[ -f "$MOUNT_ROOT/etc/ssh/sshd_config" ]]; then
-        log_info "Configuring SSH to permit root login..."
-        # Uncomment and set PermitRootLogin to yes
-        sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' "$MOUNT_ROOT/etc/ssh/sshd_config"
-        # Ensure password authentication is enabled
+        log_info "Configuring SSH to disable root login by default..."
+        # Explicitly disable root SSH login
+        sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' "$MOUNT_ROOT/etc/ssh/sshd_config"
+        # Ensure password authentication is enabled for normal users
         sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' "$MOUNT_ROOT/etc/ssh/sshd_config"
-        log_success "SSH configured to allow root login"
+        log_success "SSH configured: root login disabled, password authentication enabled for users"
     else
-        log_warn "SSH config file not found, skipping SSH configuration"
+        log_warn "SSH config file not found, skipping SSH hardening"
     fi
 
     # systemd-timesyncd - NTP time synchronization
@@ -1669,10 +1665,10 @@ phase_10_user_setup() {
     local user_password
     while true; do
         read -sp "Enter password for user $PRIMARY_USER: " user_password
-        echo
+        echo >&2
         local user_password_confirm
         read -sp "Confirm password: " user_password_confirm
-        echo
+        echo >&2
         if [[ "$user_password" == "$user_password_confirm" ]]; then
             break
         else
@@ -1687,10 +1683,10 @@ phase_10_user_setup() {
     local root_password
     while true; do
         read -sp "Enter password for root: " root_password
-        echo
+        echo >&2
         local root_password_confirm
         read -sp "Confirm password: " root_password_confirm
-        echo
+        echo >&2
         if [[ "$root_password" == "$root_password_confirm" ]]; then
             break
         else
