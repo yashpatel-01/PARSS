@@ -87,7 +87,7 @@ chmod +x desktop-setup.sh
   - Optionally build `git` sources (tag `G`) via `make && sudo make install`.
 - Sync archrice files into `$HOME` (using `rsync` if available).
 
-This gives you a **PARSS-style rice layer** (dwm/st/dmenu/slstatus, lf, neomutt, etc.) but sourced from your **own** archrice repo instead of Luke's voidrice.
+This gives you a **PARSS-style rice layer** (dwm/st/dmenu/slstatus, lf, neomutt, etc.) sourced from your **archrice** dotfiles repo.
 
 You can customize behavior with environment variables:
 
@@ -167,7 +167,7 @@ PARSS is designed for **security-focused, repeatable installs** with optional de
 
 ### When to use LARBS:
 - **Already have Arch** → Post-install rice automation
-- **Luke Smith workflow** → Pre-configured suckless setup
+- **Minimal suckless setup** → Pre-configured terminal-centric workflow
 - **Quick desktop** → Full environment in 10 minutes
 
 ### Do you need Secure Boot or TPM2?
@@ -208,9 +208,10 @@ Older standalone guides have been merged into `PARSS-MANUAL.md` and removed.
 
 ## 7. Licensing and Attribution
 
-PARSS builds on ideas and code structure from:
+PARSS is built with:
 
-- **LARBS** and **voidrice** by Luke Smith.
-- Your customized **archrice** dotfiles.
+- Secure Arch Linux base system installer
+- Optional **archrice** dotfiles integration
+- Security-first design principles
 
 The installer scripts are licensed under **GPL-3.0** (see `LICENSE`).
