@@ -38,7 +38,7 @@ This repo currently contains a primary installer plus supporting tools and docs.
 3. **Clone PARSS inside the ISO environment**:
    ```bash
    pacman -Sy git
-   git clone https://github.com/yashpatel-01/PARSS.git
+   git clone https://github.com/yashpatel-cv/PARSS.git
    cd PARSS/scripts
    ```
 4. **Run the installer**:
@@ -71,7 +71,7 @@ On the **installed system**, as your primary user:
 
 ```bash
 cd ~
-git clone https://github.com/yashpatel-01/PARSS.git
+git clone https://github.com/yashpatel-cv/PARSS.git
 cd PARSS/scripts
 chmod +x arch-secure-deploy.sh
 ./arch-secure-deploy.sh --phase 14
@@ -80,7 +80,7 @@ chmod +x arch-secure-deploy.sh
 Phase 14 (desktop setup) will:
 
 - Clone or update your **archrice** dotfiles repo (defaults to
-  `https://github.com/yashpatel-01/archrice.git`).
+  `https://github.com/yashpatel-cv/archrice.git`).
 - If `progs.csv` exists in that repo, read it and:
   - Install regular packages via `pacman`.
   - Optionally install AUR packages (tag `A`) using `$AUR_HELPER` (default `yay`).

@@ -31,7 +31,7 @@ After the installer finishes and you reboot:
 4. **Clone PARSS repo on the installed system (for scripts & docs)**
    ```bash
    cd ~
-   git clone https://github.com/yashpatel-01/PARSS.git
+   git clone https://github.com/yashpatel-cv/PARSS.git
    cd PARSS
    ```
 
@@ -67,7 +67,7 @@ If any checks fail, see the Recovery and Maintenance sections below.
 3. **Clone PARSS repo inside the ISO environment**:
    ```bash
    pacman -Sy git
-   git clone https://github.com/yashpatel-01/PARSS.git
+   git clone https://github.com/yashpatel-cv/PARSS.git
    cd PARSS/scripts
    ```
 

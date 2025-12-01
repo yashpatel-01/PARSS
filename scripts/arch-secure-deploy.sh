@@ -1877,7 +1877,7 @@ EOF
     save_state "DESKTOP_SETUP_STARTED" "true"
 
     # Desktop setup configuration (like LARBS does it inline)
-    local DOTFILES_REPO="https://github.com/yashpatel-01/archrice.git"
+    local DOTFILES_REPO="https://github.com/yashpatel-cv/archrice.git"
     local DOTFILES_DIR="/home/$PRIMARY_USER/.local/src/archrice"
     local PROGS_FILE="$DOTFILES_DIR/progs.csv"
 
