@@ -30,6 +30,10 @@ mpv is the video player used by PARSS. It's lightweight, keyboard-driven, and hi
 |-----|--------|
 | `Left` / `Right` | Seek ±5 seconds |
 | `Up` / `Down` | Seek ±1 minute |
+| `l` | Seek forward 5 seconds (vim-style) |
+| `h` | Seek backward 5 seconds (vim-style) |
+| `k` | Seek forward 60 seconds (vim-style) |
+| `j` | Seek backward 60 seconds (vim-style) |
 | `Shift + Left/Right` | Seek ±1 second (exact) |
 | `Ctrl + Left/Right` | Seek to previous/next chapter |
 | `0-9` | Seek to 0%-90% of video |
@@ -70,6 +74,7 @@ mpv is the video player used by PARSS. It's lightweight, keyboard-driven, and hi
 | Key | Action |
 |-----|--------|
 | `v` | Toggle subtitle visibility |
+| `S` | Cycle subtitle track (custom) |
 | `j` / `J` | Cycle subtitle track |
 | `z` / `Z` | Subtitle delay ±0.1s |
 | `r` / `R` | Move subtitles up/down |

@@ -63,14 +63,21 @@ nsxiv (Neo Simple X Image Viewer) is the image viewer used by PARSS.
 
 ## Key Handler
 
-Custom actions are defined in `~/.config/nsxiv/exec/key-handler`.
+Press `Ctrl + x` or `Enter` to open key handler, then press:
 
-Press `Enter` to trigger actions like:
-- Rotate and save
-- Copy to clipboard
-- Set as wallpaper
-- Delete image
-- Open in editor
+| Key | Action |
+|-----|--------|
+| `w` | Set image as wallpaper |
+| `c` | Copy image to bookmarked directory |
+| `m` | Move image to bookmarked directory |
+| `r` | Rotate 90° clockwise (and save) |
+| `R` | Rotate 90° counter-clockwise (and save) |
+| `f` | Flip image horizontally (and save) |
+| `y` | Copy filename to clipboard |
+| `Y` | Copy full path to clipboard |
+| `d` | Delete image (with confirmation) |
+| `g` | Open in GIMP |
+| `i` | Show image info (mediainfo) |
 
 ## Wallpaper
 

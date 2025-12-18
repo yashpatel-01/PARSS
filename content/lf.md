@@ -51,13 +51,18 @@ Press `Super + r` or type `lf` in terminal.
 | `M` | Move to bookmarked directory |
 | `Y` | Copy filenames to clipboard |
 | `U` | Copy full paths to clipboard |
+| `u` | Copy filenames only to clipboard |
+| `.` | Copy YouTube URL from filename |
+| `>` | Copy Piped URL from filename |
 
 ## Quick Actions
 
 | Key | Action |
 |-----|--------|
-| `w` | Open shell in current directory |
-| `W` | Open new terminal here |
+| `Enter` | Open shell in current directory |
+| `W` | Open new terminal in current directory |
+| `x` | Execute file |
+| `X` | Execute file with output shown |
 | `b` | Set image as wallpaper |
 | `T` | Open thumbnail view (nsxiv) |
 | `x` | Execute file |
@@ -79,8 +84,16 @@ Press `Super + r` or type `lf` in terminal.
 | Key | Action |
 |-----|--------|
 | `/` | Search files |
-| `Ctrl + f` | fzf search |
+| `Ctrl + f` | fzf search and select file |
 | `J` | Jump to bookmarked directory (fzf) |
+| `H` | Go to home directory |
+| `g` | Go to top of list |
+| `Ctrl + r` | Reload directory |
+| `Ctrl + s` | Toggle hidden files |
+| `Ctrl + e` | Scroll down |
+| `Ctrl + y` | Scroll up |
+| `Ctrl + l` | Unselect all |
+| `Ctrl + n` | Create new directory |
 
 ## Configuration Files
 

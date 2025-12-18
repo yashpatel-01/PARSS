@@ -17,27 +17,30 @@ zathura is the keyboard-driven PDF and document viewer used by PARSS.
 | `k` / `Up` | Scroll up |
 | `h` / `Left` | Scroll left |
 | `l` / `Right` | Scroll right |
-| `Ctrl + d` | Page down |
+| `Ctrl + d/u` | Page down/up |
+| `u` | Scroll half-page up (custom) |
+| `d` | Scroll half-page down (custom) |
 | `Ctrl + u` | Page up |
 | `Space` | Page down |
 | `Shift + Space` | Page up |
 | `gg` | Go to first page |
 | `G` | Go to last page |
 | `nG` | Go to page n |
-| `J` | Next page |
-| `K` | Previous page |
-
 ### Zoom
 
 | Key | Action |
 |-----|--------|
 | `+` / `=` | Zoom in |
 | `-` | Zoom out |
+| `K` | Zoom in (custom) |
+| `J` | Zoom out (custom) |
 | `a` | Fit to width |
 | `s` | Fit to page |
-| `d` | Toggle dual page |
-| `r` | Rotate 90° clockwise |
-| `R` | Reload document |
+| `D` | Toggle dual-page mode (custom) |
+| `r` | Reload document (custom) |
+| `R` | Rotate 90° (custom) |
+| `i` | Recolor/invert colors (custom) |
+| `p` | Print document (custom) |
 
 ### Search
 
