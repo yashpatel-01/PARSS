@@ -1291,23 +1291,47 @@ phase_6_base_installation() {
     log_info "Available space for installation: ${free_gb}GB"
 
     local packages=(
+        # Core system
         "base" "linux-zen" "linux-zen-headers" "linux-lts" "linux-lts-headers"
+        "linux-firmware"          # CRITICAL: Contains WiFi/hardware firmware
         "mkinitcpio"
+
+        # Bootloader
         "grub" "efibootmgr" "os-prober" "ntfs-3g"
+
+        # Filesystem
         "btrfs-progs"
         "cryptsetup"
+
+        # CRITICAL: Network packages (WiFi requires wpa_supplicant!)
         "networkmanager"
+        "wpa_supplicant"          # CRITICAL: Required for NetworkManager WiFi
+        "wireless-regdb"          # WiFi regulatory database
+        "iw"                      # Wireless configuration tool
+        "dhcpcd"                  # Fallback DHCP client
+
+        # Editors
         "vim" "nano"
+
+        # Development & utilities
         "git" "curl" "wget"
         "sudo"
         "zsh" "zsh-completions"
         "openssh"
         "base-devel"
+
+        # Xorg & display
         "xorg-server" "xorg-xinit" "xorg-xrandr"
         "libx11" "libxft" "libxinerama" "libxcb"
         "fontconfig" "freetype2"
         "noto-fonts" "noto-fonts-emoji"
         "picom"
+
+        # Audio (pipewire stack)
+        "pipewire" "pipewire-pulse" "pipewire-alsa" "wireplumber"
+
+        # DBus (required for many desktop apps)
+        "dbus"
     )
 
     if [[ "$ENABLE_NVIDIA_GPU" == "true" ]]; then
@@ -1846,15 +1870,18 @@ Install complete desktop environment (DWM + Dotfiles)
 
 WHAT WILL BE INSTALLED:
   - archrice dotfiles       - yay AUR helper
-  - DWM window manager      - ST terminal, dmenu
-  - Moonfly OLED theme      - ~60 packages from progs.csv
+  - DWM window manager      - ST terminal, dmenu, dwmblocks
+  - Moonfly OLED theme      - ~80 packages from progs.csv
   - Librewolf browser       - Development tools (neovim, git)
+  - Full statusbar widgets  - All scripts and integrations
 
 ADVANTAGES:
   * No reboot needed        * Network already configured
   * Complete system ready in one session
+  * Proper vim plugin installation
+  * Working statusbar and wallpaper
 
-TIME: 10-30 minutes (network dependent)
+TIME: 15-45 minutes (network dependent)
 
 TIP: Can install later with: sudo bash arch-secure-deploy.sh --phase 14
 
@@ -1876,202 +1903,504 @@ EOF
     log_info "Starting desktop environment installation..."
     save_state "DESKTOP_SETUP_STARTED" "true"
 
-    # Desktop setup configuration (like LARBS does it inline)
+    # Desktop setup configuration (LARBS-style variables)
     local DOTFILES_REPO="https://github.com/yashpatel-cv/archrice.git"
-    local DOTFILES_DIR="/home/$PRIMARY_USER/.local/src/archrice"
-    local PROGS_FILE="$DOTFILES_DIR/progs.csv"
+    local DOTFILES_BRANCH="master"
+    local REPODIR="/home/$PRIMARY_USER/.local/src"
+    local AURHELPER="yay"
 
-    log_info "This may take 10-30 minutes depending on network speed..."
+    log_info "This may take 15-45 minutes depending on network speed..."
     log_info ""
 
     # Execute desktop setup inline (LARBS-style: all logic in one script)
     arch-chroot "$MOUNT_ROOT" /bin/bash <<DESKTOP_SETUP_EOF
 set -e
 
-# Helper functions
-info() { echo -e "\\033[0;32m[INFO]\\033[0m \$*"; }
-warn() { echo -e "\\033[1;33m[WARN]\\033[0m \$*"; }
+# ============================================================================
+# PARSS Desktop Setup - LARBS-Compatible Implementation
+# ============================================================================
 
-info "PARSS Desktop Setup starting..."
+# Color definitions
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+RED='\033[0;31m'
+NC='\033[0m'
 
-# 0. Setup temporary passwordless sudo (LARBS method)
-# Required for AUR package builds which need to install as root
+# Helper functions (LARBS-style)
+info() { echo -e "\${GREEN}[INFO]\${NC} \$*"; }
+warn() { echo -e "\${YELLOW}[WARN]\${NC} \$*"; }
+error() { echo -e "\${RED}[ERROR]\${NC} \$*"; }
+
+# Install package via pacman (LARBS installpkg)
+installpkg() {
+    pacman --noconfirm --needed -S "\$1" >/dev/null 2>&1
+}
+
+# Install from AUR (LARBS aurinstall)
+aurinstall() {
+    info "[AUR] Installing \$1..."
+    sudo -u $PRIMARY_USER $AURHELPER -S --noconfirm --needed "\$1" >/dev/null 2>&1 || warn "AUR install failed: \$1"
+}
+
+# Install from git + make (LARBS gitmakeinstall)
+gitmakeinstall() {
+    local repo="\$1"
+    local progname="\${repo##*/}"
+    progname="\${progname%.git}"
+    local dir="$REPODIR/\$progname"
+
+    info "[git/make] Installing \$progname..."
+
+    sudo -u $PRIMARY_USER mkdir -p "$REPODIR"
+
+    if [[ -d "\$dir/.git" ]]; then
+        cd "\$dir" || return 1
+        sudo -u $PRIMARY_USER git pull --force origin master >/dev/null 2>&1 || true
+    else
+        sudo -u $PRIMARY_USER git -C "$REPODIR" clone --depth 1 --single-branch \
+            --no-tags -q "\$repo" "\$dir" || {
+            warn "Clone failed: \$repo"
+            return 1
+        }
+    fi
+
+    cd "\$dir" || return 1
+    make >/dev/null 2>&1
+    make install >/dev/null 2>&1
+    cd /tmp || return 1
+}
+
+# Clone dotfiles repository (LARBS putgitrepo - CRITICAL for proper integration)
+putgitrepo() {
+    local repo="\$1"
+    local dest="\$2"
+    local branch="\${3:-master}"
+
+    info "Cloning dotfiles repository..."
+
+    local tmpdir=\$(mktemp -d)
+    [ ! -d "\$dest" ] && mkdir -p "\$dest"
+    chown $PRIMARY_USER:wheel "\$tmpdir" "\$dest"
+
+    # CRITICAL: Use --recursive and --recurse-submodules for git submodules
+    sudo -u $PRIMARY_USER git -C "$REPODIR" clone --depth 1 \
+        --single-branch --no-tags -q --recursive -b "\$branch" \
+        --recurse-submodules "\$repo" "\$tmpdir" || {
+        warn "Failed to clone dotfiles"
+        return 1
+    }
+
+    # CRITICAL: Use cp -rfT to merge into home (preserves existing files)
+    sudo -u $PRIMARY_USER cp -rfT "\$tmpdir" "\$dest"
+
+    # Cleanup: Remove .git and other unnecessary files from home
+    rm -rf "\$dest/.git" "\$dest/README.md" "\$dest/LICENSE" "\$dest/FUNDING.yml"
+    rm -rf "\$tmpdir"
+
+    info " * Dotfiles deployed to \$dest"
+}
+
+# Install vim/neovim plugins (LARBS vimplugininstall - CRITICAL for vim setup)
+vimplugininstall() {
+    info "Installing neovim plugins..."
+
+    # Create autoload directory and download vim-plug
+    mkdir -p "/home/$PRIMARY_USER/.config/nvim/autoload"
+    curl -Ls "https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim" > \
+        "/home/$PRIMARY_USER/.config/nvim/autoload/plug.vim"
+
+    chown -R "$PRIMARY_USER:wheel" "/home/$PRIMARY_USER/.config/nvim"
+
+    # CRITICAL: Run nvim headless to install plugins
+    sudo -u $PRIMARY_USER nvim -c "PlugInstall|q|q" --headless >/dev/null 2>&1 || \
+        sudo -u $PRIMARY_USER nvim -c "PlugInstall" -c "qa!" >/dev/null 2>&1 || \
+        warn "Vim plugin install may need manual run: nvim +PlugInstall"
+
+    info " * Neovim plugins installed"
+}
+
+info "============================================================"
+info "PARSS Desktop Setup Starting (LARBS-Compatible)"
+info "============================================================"
+info ""
+
+# ============================================================================
+# 0. Setup temporary passwordless sudo (LARBS method - required for AUR)
+# ============================================================================
 info "Configuring temporary passwordless sudo for AUR builds..."
 trap 'rm -f /etc/sudoers.d/parss-temp' HUP INT QUIT TERM PWR EXIT
 echo "%wheel ALL=(ALL) NOPASSWD: ALL
 Defaults:%wheel,root runcwd=*" >/etc/sudoers.d/parss-temp
-info " * Temporary sudo configured (will be removed after setup)"
 
-# 1. Clone archrice dotfiles
-info "Cloning archrice dotfiles repository..."
-sudo -u $PRIMARY_USER mkdir -p "\$(dirname $DOTFILES_DIR)"
-if [[ -d "$DOTFILES_DIR/.git" ]]; then
-    info "Found existing archrice repo, pulling latest..."
-    sudo -u $PRIMARY_USER git -C "$DOTFILES_DIR" pull --ff-only || warn "Using existing copy"
-else
-    sudo -u $PRIMARY_USER git clone --depth 1 "$DOTFILES_REPO" "$DOTFILES_DIR" || {
-        warn "Failed to clone dotfiles"
-        exit 1
-    }
-fi
+# ============================================================================
+# 1. Install essential base packages (before progs.csv)
+# ============================================================================
+info "Installing essential base packages..."
 
-# 2. Install AUR helper (yay) - LARBS method
-info "Installing AUR helper (yay)..."
-if ! command -v yay >/dev/null 2>&1; then
-    # Install yay from AUR (same method as LARBS)
-    repodir="/home/$PRIMARY_USER/.local/src"
-    sudo -u $PRIMARY_USER mkdir -p "\$repodir/yay"
+# These are required for the rest of the setup and often missing
+essential_packages=(
+    "curl" "ca-certificates" "base-devel" "git" "ntp" "zsh" "dash"
+    "xwallpaper"    # CRITICAL: Required by setbg script
+    "xdotool"       # CRITICAL: Required by setbg for F5 refresh
+    "xclip"         # Clipboard support
+    "libnotify"     # Desktop notifications
+    "dunst"         # Notification daemon
+    "dhcpcd"        # CRITICAL: Fallback network (if NetworkManager fails)
+)
 
-    sudo -u $PRIMARY_USER git -C "\$repodir" clone --depth 1 --single-branch \
-        --no-tags -q "https://aur.archlinux.org/yay.git" "\$repodir/yay" || {
-        cd "\$repodir/yay" || exit 1
+for pkg in "\${essential_packages[@]}"; do
+    installpkg "\$pkg" || warn "Could not install: \$pkg"
+done
+
+# Sync time (LARBS does this)
+ntpd -q -g >/dev/null 2>&1 || true
+
+info " * Essential packages installed"
+
+# ============================================================================
+# 2. Make pacman colorful and fast (LARBS style)
+# ============================================================================
+grep -q "ILoveCandy" /etc/pacman.conf || sed -i "/#VerbosePkgLists/a ILoveCandy" /etc/pacman.conf
+sed -Ei "s/^#(ParallelDownloads).*/\1 = 5/;/^#Color$/s/#//" /etc/pacman.conf
+sed -i "s/-j2/-j\$(nproc)/;/^#MAKEFLAGS/s/^#//" /etc/makepkg.conf
+
+# ============================================================================
+# 3. Install AUR helper (yay) - LARBS manualinstall method
+# ============================================================================
+info "Installing AUR helper ($AURHELPER)..."
+
+if ! command -v $AURHELPER >/dev/null 2>&1; then
+    sudo -u $PRIMARY_USER mkdir -p "$REPODIR/$AURHELPER"
+
+    sudo -u $PRIMARY_USER git -C "$REPODIR" clone --depth 1 --single-branch \
+        --no-tags -q "https://aur.archlinux.org/$AURHELPER.git" "$REPODIR/$AURHELPER" || {
+        cd "$REPODIR/$AURHELPER" || exit 1
         sudo -u $PRIMARY_USER git pull --force origin master
     }
 
-    cd "\$repodir/yay" || exit 1
+    cd "$REPODIR/$AURHELPER" || exit 1
     sudo -u $PRIMARY_USER makepkg --noconfirm -si >/dev/null 2>&1 || {
-        warn "Failed to install yay"
+        error "Failed to install $AURHELPER"
         exit 1
     }
 
     # Configure yay for auto-updates of *-git packages (LARBS does this)
-    sudo -u $PRIMARY_USER yay -Y --save --devel >/dev/null 2>&1
+    sudo -u $PRIMARY_USER $AURHELPER -Y --save --devel >/dev/null 2>&1
 
-    info " * yay installed"
+    info " * $AURHELPER installed and configured"
 else
-    info " * yay already installed"
+    info " * $AURHELPER already installed"
 fi
 
-# 3. Install packages from progs.csv
-info "Looking for progs.csv at: $PROGS_FILE"
-if [[ ! -f "$PROGS_FILE" ]]; then
-    warn "No progs.csv found at $PROGS_FILE"
-    info "Contents of $DOTFILES_DIR:"
-    ls -la "$DOTFILES_DIR" || warn "Directory doesn't exist"
-else
-    # Count total packages for progress tracking
-    total=\$(grep -c "^[^#]" "$PROGS_FILE" 2>/dev/null || echo 0)
+# ============================================================================
+# 4. Clone and deploy dotfiles (LARBS putgitrepo method)
+# ============================================================================
+sudo -u $PRIMARY_USER mkdir -p "$REPODIR"
+chown -R "$PRIMARY_USER:wheel" "/home/$PRIMARY_USER/.local"
+
+putgitrepo "$DOTFILES_REPO" "/home/$PRIMARY_USER" "$DOTFILES_BRANCH"
+
+# ============================================================================
+# 5. Install packages from progs.csv (LARBS installationloop)
+# ============================================================================
+PROGS_FILE="/home/$PRIMARY_USER/progs.csv"
+
+if [[ -f "\$PROGS_FILE" ]]; then
+    # Get already installed AUR packages (for skipping)
+    aurinstalled=\$(pacman -Qqm 2>/dev/null || echo "")
+
+    total=\$(grep -cvE "^(#|\$)" "\$PROGS_FILE" 2>/dev/null || echo 0)
     n=0
+
     info "Installing \$total packages from progs.csv..."
+    info ""
 
     while IFS=, read -r tag prog comment; do
         # Skip comments and blank lines
-        [[ -z "\${tag}\${prog}" ]] && continue
+        [[ -z "\$prog" ]] && continue
         [[ "\$tag" =~ ^# ]] && continue
+        [[ "\$prog" =~ ^# ]] && continue
 
         n=\$((n + 1))
 
+        # Clean up comment (remove quotes)
+        comment=\$(echo "\$comment" | sed -E 's/(^"|"\$)//g')
+
         case "\$tag" in
-            "" )
+            "A")
+                # AUR package
+                echo "\$aurinstalled" | grep -q "^\$prog\$" && continue
+                info "[\$n/\$total] [AUR] \$prog"
+                aurinstall "\$prog"
+                ;;
+            "G")
+                # Git + make install
+                info "[\$n/\$total] [git] \$prog"
+                gitmakeinstall "\$prog"
+                ;;
+            "P")
+                # Python pip
+                info "[\$n/\$total] [pip] \$prog"
+                [ -x "\$(command -v pip)" ] || installpkg python-pip
+                yes | pip install "\$prog" >/dev/null 2>&1 || warn "pip failed: \$prog"
+                ;;
+            *)
+                # Main repo (pacman)
                 info "[\$n/\$total] [pacman] \$prog"
-                pacman --noconfirm --needed -S "\$prog" >/dev/null 2>&1 || warn "Failed: \$prog"
-                ;;
-            "G" )
-                info "[\$n/\$total] [git/make] \$prog"
-                repodir="/home/$PRIMARY_USER/.local/src"
-                sudo -u $PRIMARY_USER mkdir -p "\$repodir"
-                name="\${prog##*/}"
-                name="\${name%.git}"
-                dir="\$repodir/\$name"
-
-                if [[ -d "\$dir/.git" ]]; then
-                    sudo -u $PRIMARY_USER git -C "\$dir" pull --ff-only >/dev/null 2>&1 || warn "Using existing: \$prog"
-                else
-                    sudo -u $PRIMARY_USER git clone --depth 1 --quiet "\$prog" "\$dir" >/dev/null 2>&1 || {
-                        warn "Clone failed: \$prog"
-                        continue
-                    }
-                fi
-
-                (cd "\$dir" && sudo -u $PRIMARY_USER make >/dev/null 2>&1 && make install >/dev/null 2>&1) || warn "Build failed: \$prog"
-                ;;
-            "A" )
-                # AUR packages - requires AUR helper (yay)
-                if command -v yay >/dev/null 2>&1; then
-                    info "[\$n/\$total] [AUR] \$prog (building from source...)"
-                    sudo -u $PRIMARY_USER yay --noconfirm --needed -S "\$prog" >/dev/null 2>&1 || warn "Failed: \$prog"
-                else
-                    warn "No AUR helper (yay) found, skipping: \$prog"
-                fi
-                ;;
-            * )
-                warn "Unknown tag '\$tag' for \$prog"
+                installpkg "\$prog"
                 ;;
         esac
-    done < "$PROGS_FILE"
+    done < "\$PROGS_FILE"
 
     info ""
     info " * Package installation complete (\$n packages processed)"
-fi
-
-# 4. Deploy dotfiles
-info "Deploying dotfiles to /home/$PRIMARY_USER..."
-if command -v rsync >/dev/null 2>&1; then
-    sudo -u $PRIMARY_USER rsync -a --delete --exclude='.git' "$DOTFILES_DIR"/ "/home/$PRIMARY_USER"/
 else
-    warn "rsync not found, using cp"
-    sudo -u $PRIMARY_USER cp -rf "$DOTFILES_DIR"/. "/home/$PRIMARY_USER"/
+    warn "progs.csv not found at \$PROGS_FILE"
+    warn "Skipping package installation from CSV"
 fi
 
-# 5. OLED/HiDPI Configuration
-info "Configuring OLED theme and HiDPI support..."
+# ============================================================================
+# 6. Install vim plugins (LARBS vimplugininstall - CRITICAL)
+# ============================================================================
+[ ! -f "/home/$PRIMARY_USER/.config/nvim/autoload/plug.vim" ] && vimplugininstall
 
-# Make all scripts executable
-chmod +x /home/$PRIMARY_USER/.local/bin/* 2>/dev/null || true
+# ============================================================================
+# 7. Create required directories (LARBS does this)
+# ============================================================================
+info "Creating required directories..."
 
-# Set OLED black wallpaper using existing file from dotfiles
+sudo -u $PRIMARY_USER mkdir -p "/home/$PRIMARY_USER/.cache/zsh/"
+sudo -u $PRIMARY_USER mkdir -p "/home/$PRIMARY_USER/.config/abook/"
+sudo -u $PRIMARY_USER mkdir -p "/home/$PRIMARY_USER/.config/mpd/playlists/"
+sudo -u $PRIMARY_USER mkdir -p "/home/$PRIMARY_USER/.local/share/mail/"
+sudo -u $PRIMARY_USER mkdir -p "/home/$PRIMARY_USER/.local/share/larbs/"
+
+# ============================================================================
+# 8. Make scripts executable (CRITICAL - recursive for statusbar)
+# ============================================================================
+info "Making scripts executable..."
+
+# Make ALL scripts in .local/bin executable (including subdirectories)
+find /home/$PRIMARY_USER/.local/bin -type f -exec chmod +x {} \; 2>/dev/null || true
+
+# Also ensure key config scripts are executable
+chmod +x /home/$PRIMARY_USER/.config/x11/xinitrc 2>/dev/null || true
+chmod +x /home/$PRIMARY_USER/.xprofile 2>/dev/null || true
+chmod +x /home/$PRIMARY_USER/.zprofile 2>/dev/null || true
+
+info " * All scripts made executable"
+
+# ============================================================================
+# 9. System configuration (LARBS style)
+# ============================================================================
+info "Configuring system settings..."
+
+# Make zsh the default shell
+chsh -s /bin/zsh "$PRIMARY_USER" >/dev/null 2>&1
+
+# Make dash the default /bin/sh (LARBS does this for speed)
+ln -sfT /bin/dash /bin/sh >/dev/null 2>&1 || true
+
+# Generate dbus UUID (required for Artix/runit, harmless on systemd)
+dbus-uuidgen >/var/lib/dbus/machine-id 2>/dev/null || true
+
+# Disable PC speaker beep
+rmmod pcspkr 2>/dev/null || true
+echo "blacklist pcspkr" >/etc/modprobe.d/nobeep.conf 2>/dev/null || true
+
+# Enable tap to click for touchpads
+[ ! -f /etc/X11/xorg.conf.d/40-libinput.conf ] && mkdir -p /etc/X11/xorg.conf.d && printf 'Section "InputClass"
+        Identifier "libinput touchpad catchall"
+        MatchIsTouchpad "on"
+        MatchDevicePath "/dev/input/event*"
+        Driver "libinput"
+	# Enable left mouse button by tapping
+	Option "Tapping" "on"
+EndSection' >/etc/X11/xorg.conf.d/40-libinput.conf
+
+info " * System settings configured"
+
+# ============================================================================
+# 10. Setup wallpaper (CRITICAL - setbg requires xwallpaper + bg file)
+# ============================================================================
+info "Setting up wallpaper..."
+
+# Create wallpapers directory if missing
+sudo -u $PRIMARY_USER mkdir -p "/home/$PRIMARY_USER/.local/share/wallpapers"
+
+# Create a pure black OLED wallpaper if none exists
+if [[ ! -f "/home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png" ]]; then
+    # Create 1x1 black PNG (will be scaled by xwallpaper)
+    if command -v convert >/dev/null 2>&1; then
+        convert -size 1920x1080 xc:black "/home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png" 2>/dev/null || true
+    else
+        # Fallback: create minimal valid PNG header for black image
+        printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\x00\x00\x00\x02\x00\x01\xe2!\xbc3\x00\x00\x00\x00IEND\xaeB`\x82' > "/home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png" 2>/dev/null || true
+    fi
+fi
+
+# Create the bg symlink that setbg uses
 if [[ -f "/home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png" ]]; then
-    sudo -u $PRIMARY_USER ln -sf /home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png /home/$PRIMARY_USER/.local/share/bg
-    info " * OLED black wallpaper set"
-fi
-
-# Auto-detect screen resolution and set DPI in Xresources
-resolution=\$(xrandr 2>/dev/null | grep '\*' | awk '{print \$1}' | head -n1 || echo "1920x1080")
-width=\${resolution%x*}
-if [[ \$width -ge 3840 ]]; then
-    dpi=192  # 4K displays
-elif [[ \$width -ge 2560 ]]; then
-    dpi=144  # 1440p/1600p displays
+    sudo -u $PRIMARY_USER ln -sf "/home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png" "/home/$PRIMARY_USER/.local/share/bg"
+    info " * OLED black wallpaper configured"
 else
-    dpi=96   # 1080p and lower
-fi
-xresources="/home/$PRIMARY_USER/.config/x11/xresources"
-if [[ -f "\$xresources" ]]; then
-    sed -i "s/^! Xft.dpi:.*/Xft.dpi: \$dpi/" "\$xresources"
-    sed -i "s/^Xft.dpi:.*/Xft.dpi: \$dpi/" "\$xresources"
-    info " * DPI set to \$dpi (detected \$resolution)"
+    warn "Could not create wallpaper file"
 fi
 
-# Remove DWM gaps for OLED displays (edge-to-edge windows)
-dwm_config="/home/$PRIMARY_USER/.local/src/dwm/config.h"
+# ============================================================================
+# 11. Rebuild suckless tools (ensure they're compiled with user's config)
+# ============================================================================
+info "Rebuilding suckless tools..."
+
+for tool in dwm dwmblocks dmenu st; do
+    if [[ -d "$REPODIR/\$tool" ]]; then
+        info " * Rebuilding \$tool..."
+        cd "$REPODIR/\$tool"
+        sudo -u $PRIMARY_USER make clean >/dev/null 2>&1 || true
+        sudo -u $PRIMARY_USER make >/dev/null 2>&1 && make install >/dev/null 2>&1 || warn "Build failed: \$tool"
+    fi
+done
+
+# ============================================================================
+# 12. OLED-specific DWM configuration (remove gaps for true black)
+# ============================================================================
+info "Configuring DWM for OLED..."
+
+dwm_config="$REPODIR/dwm/config.h"
 if [[ -f "\$dwm_config" ]]; then
-    sed -i 's/^static const unsigned int gappih.*/static const unsigned int gappih = 0;/' "\$dwm_config"
-    sed -i 's/^static const unsigned int gappiv.*/static const unsigned int gappiv = 0;/' "\$dwm_config"
-    sed -i 's/^static const unsigned int gappoh.*/static const unsigned int gappoh = 0;/' "\$dwm_config"
-    sed -i 's/^static const unsigned int gappov.*/static const unsigned int gappov = 0;/' "\$dwm_config"
-    cd "/home/$PRIMARY_USER/.local/src/dwm"
-    sudo -u $PRIMARY_USER make >/dev/null 2>&1 && make install >/dev/null 2>&1 && info " * DWM gaps removed"
+    # Remove gaps for edge-to-edge OLED black
+    sed -i 's/^static const unsigned int gappih.*/static const unsigned int gappih = 0;/' "\$dwm_config" 2>/dev/null || true
+    sed -i 's/^static const unsigned int gappiv.*/static const unsigned int gappiv = 0;/' "\$dwm_config" 2>/dev/null || true
+    sed -i 's/^static const unsigned int gappoh.*/static const unsigned int gappoh = 0;/' "\$dwm_config" 2>/dev/null || true
+    sed -i 's/^static const unsigned int gappov.*/static const unsigned int gappov = 0;/' "\$dwm_config" 2>/dev/null || true
+
+    # Rebuild with OLED config
+    cd "$REPODIR/dwm"
+    sudo -u $PRIMARY_USER make clean >/dev/null 2>&1 || true
+    sudo -u $PRIMARY_USER make >/dev/null 2>&1 && make install >/dev/null 2>&1
+    info " * DWM configured for OLED (no gaps)"
 fi
 
-# Copy configs to root for consistent theme with sudo
+# ============================================================================
+# 13. Copy configs to root for consistent sudo experience
+# ============================================================================
+info "Configuring root account..."
+
 mkdir -p /root/.config 2>/dev/null
-[[ -d "/home/$PRIMARY_USER/.config/nvim" ]] && cp -r "/home/$PRIMARY_USER/.config/nvim" /root/.config/ && info " * Root nvim configured"
-[[ -f "/home/$PRIMARY_USER/.config/x11/xresources" ]] && cp "/home/$PRIMARY_USER/.config/x11/xresources" /root/.Xresources
+[[ -d "/home/$PRIMARY_USER/.config/nvim" ]] && cp -r "/home/$PRIMARY_USER/.config/nvim" /root/.config/
+[[ -f "/home/$PRIMARY_USER/.config/x11/xresources" ]] && cp "/home/$PRIMARY_USER/.config/x11/xresources" /root/.Xresources 2>/dev/null || true
 
-info ""
-info "OLED/HiDPI Setup Complete:"
-info "  - Moonfly OLED: Pure black #000000 (OLED pixels off)"
-info "  - DPI: \$dpi for \$resolution display"
-info "  - Wallpaper: Black (zero power)"
-info "  - DWM: No gaps (maximize space)"
-info "  - Root/user: Same theme"
-info ""
-info "After reboot: login and run 'startx'"
+# ============================================================================
+# 14. Enable dhcpcd as fallback network (if NetworkManager fails)
+# ============================================================================
+info "Configuring network fallback..."
+systemctl enable dhcpcd.service 2>/dev/null || true
 
-# Cleanup: Remove temporary passwordless sudo
+# ============================================================================
+# 15. Setup newsboat default RSS feeds (LARBS does this)
+# ============================================================================
+info "Setting up newsboat RSS feeds..."
+if [[ ! -s "/home/$PRIMARY_USER/.config/newsboat/urls" ]]; then
+    sudo -u $PRIMARY_USER mkdir -p "/home/$PRIMARY_USER/.config/newsboat"
+    cat > "/home/$PRIMARY_USER/.config/newsboat/urls" << 'NEWSBOAT_URLS'
+https://www.archlinux.org/feeds/news/ "tech"
+https://github.com/lukesmithxyz/voidrice/commits/master.atom "~LARBS dotfiles"
+NEWSBOAT_URLS
+    chown $PRIMARY_USER:wheel "/home/$PRIMARY_USER/.config/newsboat/urls"
+    info " * Newsboat default feeds configured"
+fi
+
+# ============================================================================
+# 16. Setup Librewolf browser profile (LARBS does this)
+# ============================================================================
+info "Setting up Librewolf browser..."
+if command -v librewolf >/dev/null 2>&1; then
+    browserdir="/home/$PRIMARY_USER/.librewolf"
+    profilesini="\$browserdir/profiles.ini"
+
+    # Start librewolf headless to generate profile
+    sudo -u $PRIMARY_USER librewolf --headless >/dev/null 2>&1 &
+    sleep 2
+
+    # Get the profile directory
+    if [[ -f "\$profilesini" ]]; then
+        profile=\$(sed -n "/Default=.*.default-default/ s/.*=//p" "\$profilesini" 2>/dev/null || true)
+        pdir="\$browserdir/\$profile"
+
+        # Link arkenfox/user.js if config exists in dotfiles
+        if [[ -d "\$pdir" ]] && [[ -f "/home/$PRIMARY_USER/.config/firefox/larbs.js" ]]; then
+            ln -sf "/home/$PRIMARY_USER/.config/firefox/larbs.js" "\$pdir/user-overrides.js" 2>/dev/null || true
+            info " * Librewolf privacy settings linked"
+        fi
+    fi
+
+    # Kill the headless instance
+    pkill -u $PRIMARY_USER librewolf 2>/dev/null || true
+    info " * Librewolf profile initialized"
+else
+    info " * Librewolf not installed, skipping browser setup"
+fi
+
+# ============================================================================
+# 17. Configure sudoers for convenience commands (LARBS does this)
+# ============================================================================
+info "Configuring sudoers for convenience..."
+
+# Allow wheel users to sudo with password
+echo "%wheel ALL=(ALL:ALL) ALL" >/etc/sudoers.d/00-parss-wheel-can-sudo
+
+# Allow common system commands without password
+echo "%wheel ALL=(ALL:ALL) NOPASSWD: /usr/bin/shutdown,/usr/bin/reboot,/usr/bin/systemctl suspend,/usr/bin/wifi-menu,/usr/bin/mount,/usr/bin/umount,/usr/bin/pacman -Syu,/usr/bin/pacman -Syyu,/usr/bin/pacman -Syyu --noconfirm,/usr/bin/loadkeys,/usr/bin/pacman -Syyuw --noconfirm,/usr/bin/pacman -S -y --config /etc/pacman.conf --,/usr/bin/pacman -S -y -u --config /etc/pacman.conf --" >/etc/sudoers.d/01-parss-cmds-without-password
+
+# Set nvim as default visudo editor
+echo "Defaults editor=/usr/bin/nvim" >/etc/sudoers.d/02-parss-visudo-editor
+
+info " * Sudoers convenience commands configured"
+
+# ============================================================================
+# 18. Kernel/sysctl settings (LARBS does this)
+# ============================================================================
+info "Configuring kernel settings..."
+mkdir -p /etc/sysctl.d
+echo "kernel.dmesg_restrict = 0" > /etc/sysctl.d/dmesg.conf
+info " * Kernel settings configured"
+
+# ============================================================================
+# 19. Final ownership fix
+# ============================================================================
+info "Fixing file ownership..."
+chown -R $PRIMARY_USER:wheel "/home/$PRIMARY_USER" 2>/dev/null || true
+
+# ============================================================================
+# CLEANUP: Remove temporary passwordless sudo (CRITICAL for security)
+# ============================================================================
 info "Cleaning up temporary sudo configuration..."
 rm -f /etc/sudoers.d/parss-temp
-info " * Temporary sudo removed (security restored)"
+
+# ============================================================================
+# COMPLETION SUMMARY
+# ============================================================================
+info ""
+info "============================================================"
+info "PARSS Desktop Setup Complete!"
+info "============================================================"
+info ""
+info "Installed components:"
+info "  - DWM window manager (OLED optimized, no gaps)"
+info "  - dwmblocks status bar with widgets"
+info "  - ST terminal emulator"
+info "  - dmenu application launcher"
+info "  - Neovim with Moonfly theme + plugins"
+info "  - All scripts in ~/.local/bin (including statusbar)"
+info "  - OLED black wallpaper"
+info "  - zsh as default shell"
+info ""
+info "After reboot:"
+info "  1. Login as $PRIMARY_USER"
+info "  2. Run 'startx' to launch DWM"
+info "  3. Press Super+F1 for keybinding help"
+info ""
 
 DESKTOP_SETUP_EOF
 
