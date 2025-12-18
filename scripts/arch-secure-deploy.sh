@@ -2415,7 +2415,7 @@ sudo -u $PRIMARY_USER mkdir -p "/home/$PRIMARY_USER/.local/share/wallpapers"
 if [[ ! -f "/home/$PRIMARY_USER/.local/share/wallpapers/dark-bg.png" ]]; then
     # Create 1x1 black PNG (will be scaled by xwallpaper)
     if command -v convert >/dev/null 2>&1; then
-        convert -size 1920x1080 xc:'#080808' "/home/$PRIMARY_USER/.local/share/wallpapers/dark-bg.png" 2>/dev/null || true
+        convert -size 1920x1080 xc:black "/home/$PRIMARY_USER/.local/share/wallpapers/dark-bg.png" 2>/dev/null || true
     else
         # Fallback: create minimal valid PNG header for black image
         printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\x00\x00\x00\x02\x00\x01\xe2!\xbc3\x00\x00\x00\x00IEND\xaeB`\x82' > "/home/$PRIMARY_USER/.local/share/wallpapers/dark-bg.png" 2>/dev/null || true
