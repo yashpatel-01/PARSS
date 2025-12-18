@@ -1902,7 +1902,7 @@ Install complete desktop environment (DWM + Dotfiles)
 WHAT WILL BE INSTALLED:
   - archrice dotfiles       - yay AUR helper
   - DWM window manager      - ST terminal, dmenu, dwmblocks
-  - Moonfly OLED theme      - ~80 packages from progs.csv
+  - Moonfly dark theme      - ~80 packages from progs.csv
   - Librewolf browser       - Development tools (neovim, git)
   - Full statusbar widgets  - All scripts and integrations
 
@@ -2260,21 +2260,21 @@ info "Setting up wallpaper..."
 # Create wallpapers directory if missing
 sudo -u $PRIMARY_USER mkdir -p "/home/$PRIMARY_USER/.local/share/wallpapers"
 
-# Create a pure black OLED wallpaper if none exists
-if [[ ! -f "/home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png" ]]; then
+# Create a dark wallpaper if none exists
+if [[ ! -f "/home/$PRIMARY_USER/.local/share/wallpapers/dark-bg.png" ]]; then
     # Create 1x1 black PNG (will be scaled by xwallpaper)
     if command -v convert >/dev/null 2>&1; then
-        convert -size 1920x1080 xc:black "/home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png" 2>/dev/null || true
+        convert -size 1920x1080 xc:'#080808' "/home/$PRIMARY_USER/.local/share/wallpapers/dark-bg.png" 2>/dev/null || true
     else
         # Fallback: create minimal valid PNG header for black image
-        printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\x00\x00\x00\x02\x00\x01\xe2!\xbc3\x00\x00\x00\x00IEND\xaeB`\x82' > "/home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png" 2>/dev/null || true
+        printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\x00\x00\x00\x02\x00\x01\xe2!\xbc3\x00\x00\x00\x00IEND\xaeB`\x82' > "/home/$PRIMARY_USER/.local/share/wallpapers/dark-bg.png" 2>/dev/null || true
     fi
 fi
 
 # Create the bg symlink that setbg uses
-if [[ -f "/home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png" ]]; then
-    sudo -u $PRIMARY_USER ln -sf "/home/$PRIMARY_USER/.local/share/wallpapers/oled-black.png" "/home/$PRIMARY_USER/.local/share/bg"
-    info " * OLED black wallpaper configured"
+if [[ -f "/home/$PRIMARY_USER/.local/share/wallpapers/dark-bg.png" ]]; then
+    sudo -u $PRIMARY_USER ln -sf "/home/$PRIMARY_USER/.local/share/wallpapers/dark-bg.png" "/home/$PRIMARY_USER/.local/share/bg"
+    info " * Dark wallpaper configured"
 else
     warn "Could not create wallpaper file"
 fi
@@ -2294,23 +2294,23 @@ for tool in dwm dwmblocks dmenu st; do
 done
 
 # ============================================================================
-# 12. OLED-specific DWM configuration (remove gaps for true black)
+# 12. DWM configuration (minimal gaps for clean look)
 # ============================================================================
-info "Configuring DWM for OLED..."
+info "Configuring DWM..."
 
 dwm_config="$REPODIR/dwm/config.h"
 if [[ -f "\$dwm_config" ]]; then
-    # Remove gaps for edge-to-edge OLED black
+    # Minimal gaps for clean look
     sed -i 's/^static const unsigned int gappih.*/static const unsigned int gappih = 0;/' "\$dwm_config" 2>/dev/null || true
     sed -i 's/^static const unsigned int gappiv.*/static const unsigned int gappiv = 0;/' "\$dwm_config" 2>/dev/null || true
     sed -i 's/^static const unsigned int gappoh.*/static const unsigned int gappoh = 0;/' "\$dwm_config" 2>/dev/null || true
     sed -i 's/^static const unsigned int gappov.*/static const unsigned int gappov = 0;/' "\$dwm_config" 2>/dev/null || true
 
-    # Rebuild with OLED config
+    # Rebuild DWM
     cd "$REPODIR/dwm"
     sudo -u $PRIMARY_USER make clean >/dev/null 2>&1 || true
     sudo -u $PRIMARY_USER make >/dev/null 2>&1 && make install >/dev/null 2>&1
-    info " * DWM configured for OLED (no gaps)"
+    info " * DWM configured (minimal gaps)"
 fi
 
 # ============================================================================
@@ -2515,13 +2515,13 @@ info "PARSS Desktop Setup Complete!"
 info "============================================================"
 info ""
 info "Installed components:"
-info "  - DWM window manager (OLED optimized, no gaps)"
+info "  - DWM window manager (minimal gaps)"
 info "  - dwmblocks status bar with widgets"
 info "  - ST terminal emulator"
 info "  - dmenu application launcher"
 info "  - Neovim with Moonfly theme + plugins"
 info "  - All scripts in ~/.local/bin (including statusbar)"
-info "  - OLED black wallpaper"
+info "  - Dark wallpaper"
 info "  - zsh as default shell"
 info ""
 info "After reboot:"
