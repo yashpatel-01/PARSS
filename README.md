@@ -290,34 +290,62 @@ reboot
 
 ---
 
-## 7. Laptop/ThinkPad Support
+## 7. Laptop Configuration (Phase 15)
 
-PARSS includes special support for ThinkPad laptops (especially P1 Gen5 which is known for thermal issues):
+PARSS includes a separate **Phase 15** for laptop-specific configuration. This is presented as an optional menu after the desktop setup:
 
-### Packages Installed
-- **thinkfan** — Intelligent fan control daemon
+```
+===============================================================================
+                    LAPTOP CONFIGURATION
+                         ** PHASE 15 **
+===============================================================================
+
+LAPTOP TYPE OPTIONS:
+  [1] ThinkPad (P1/X1/T-series) - Full thinkfan + TLP + thermald
+  [2] Generic Laptop            - TLP + thermald (no vendor fan control)
+  [3] Desktop / Skip            - Skip laptop configuration
+===============================================================================
+```
+
+### Option 1: ThinkPad Configuration
+
+Installs and configures:
+- **thinkfan** — Intelligent fan control with aggressive cooling profile
 - **lm_sensors** — Hardware temperature monitoring
 - **thermald** — Intel thermal daemon (prevents CPU throttling)
 - **tlp** — Battery/power optimization
 - **acpid** — ACPI event handling (lid close, power button)
+- **powertop** — Power consumption analysis
 
-### Fan Control Configuration
+Creates `/etc/thinkfan.conf` with aggressive cooling for P1/X1/T-series:
+- Fan activates at 45°C (earlier than default)
+- Full speed at 77°C (before thermal throttling at 80°C+)
 
-PARSS creates an aggressive cooling profile at `/etc/thinkfan.conf` optimized for ThinkPad P1 Gen5:
-- Fan activates earlier (45°C instead of default 55°C)
-- Full speed at 77°C (before thermal throttling kicks in at 80°C+)
-- Supports both discrete GPU and CPU cooling
+### Option 2: Generic Laptop Configuration
 
-To adjust fan thresholds after installation:
+Installs power management without vendor-specific fan control:
+- **thermald**, **tlp**, **acpid**, **powertop**
+
+### Post-Installation Commands
+
 ```bash
+# Monitor temperatures
+sensors
+watch -n 1 sensors
+
+# Adjust ThinkPad fan thresholds
 sudo nvim /etc/thinkfan.conf
 sudo systemctl restart thinkfan
+
+# Optimize power consumption
+sudo powertop --auto-tune
 ```
 
-To monitor temperatures:
+### Running Phase 15 Later
+
+If you skipped laptop configuration during install:
 ```bash
-sensors              # Current temps
-watch -n 1 sensors   # Live monitoring
+sudo bash arch-secure-deploy.sh --phase 15
 ```
 
 ---

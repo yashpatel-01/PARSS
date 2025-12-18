@@ -2424,78 +2424,7 @@ echo "kernel.dmesg_restrict = 0" > /etc/sysctl.d/dmesg.conf
 info " * Kernel settings configured"
 
 # ============================================================================
-# 19. ThinkPad Fan Control (for P1 Gen5 and other ThinkPads)
-# ============================================================================
-info "Configuring ThinkPad fan control..."
-
-# Enable thinkpad_acpi fan control
-mkdir -p /etc/modprobe.d
-cat > /etc/modprobe.d/thinkpad_acpi.conf << 'THINKPAD_ACPI'
-# Enable fan control for ThinkPad laptops
-options thinkpad_acpi fan_control=1 experimental=1
-THINKPAD_ACPI
-
-# Create thinkfan configuration for ThinkPad P1 Gen5 (aggressive cooling)
-if command -v thinkfan >/dev/null 2>&1; then
-    cat > /etc/thinkfan.conf << 'THINKFAN_CONF'
-##############################################################################
-# ThinkPad P1 Gen5 Fan Configuration - Aggressive Cooling
-# Optimized for preventing thermal throttling after thermal paste change
-##############################################################################
-
-sensors:
-  # Try thinkpad-specific sensor first
-  - tpacpi: /proc/acpi/ibm/thermal
-    indices: [0, 1, 2, 3, 4, 5, 6, 7]
-    correction: [0, 0, 0, 0, 0, 0, 0, 0]
-
-  # Fallback to hwmon sensors if tpacpi not available
-  # - hwmon: /sys/devices/virtual/thermal/thermal_zone0/temp
-
-fans:
-  - tpacpi: /proc/acpi/ibm/fan
-
-levels:
-  # Aggressive cooling profile for P1 Gen5 (runs hot with dGPU)
-  # Format: [fan_level, low_temp, high_temp]
-  - [0,      0,    45]    # Fan off below 45°C
-  - [1,     42,    50]    # Level 1: 42-50°C
-  - [2,     47,    55]    # Level 2: 47-55°C
-  - [3,     52,    60]    # Level 3: 52-60°C
-  - [4,     57,    65]    # Level 4: 57-65°C
-  - [5,     62,    70]    # Level 5: 62-70°C
-  - [6,     67,    75]    # Level 6: 67-75°C
-  - [7,     72,    80]    # Level 7: 72-80°C (max regulated)
-  - ["level full-speed", 77, 32767]  # Full speed above 77°C
-THINKFAN_CONF
-
-    # Enable thinkfan service
-    systemctl enable thinkfan.service 2>/dev/null || true
-    info " * ThinkPad fan control configured (thinkfan)"
-else
-    info " * thinkfan not installed, skipping fan config"
-fi
-
-# Enable thermald for Intel thermal management
-if command -v thermald >/dev/null 2>&1; then
-    systemctl enable thermald.service 2>/dev/null || true
-    info " * Intel thermal daemon enabled"
-fi
-
-# Enable TLP for power management
-if command -v tlp >/dev/null 2>&1; then
-    systemctl enable tlp.service 2>/dev/null || true
-    systemctl mask systemd-rfkill.service 2>/dev/null || true
-    systemctl mask systemd-rfkill.socket 2>/dev/null || true
-    info " * TLP power management enabled"
-fi
-
-# Enable acpid for ACPI events
-systemctl enable acpid.service 2>/dev/null || true
-info " * ACPI event handler enabled"
-
-# ============================================================================
-# 20. Final ownership fix
+# 19. Final ownership fix
 # ============================================================================
 info "Fixing file ownership..."
 chown -R $PRIMARY_USER:wheel "/home/$PRIMARY_USER" 2>/dev/null || true
@@ -2544,6 +2473,167 @@ DESKTOP_SETUP_EOF
     fi
 
     log_success "Phase 14 completed"
+}
+
+phase_15_laptop_configuration() {
+    # Laptop configuration prompt
+    cat >&2 << 'EOF'
+
+===============================================================================
+                    LAPTOP CONFIGURATION
+                         ** PHASE 15 **
+===============================================================================
+
+This phase configures laptop-specific optimizations:
+  - Fan control (thermal management)
+  - Power management (battery life)
+  - ACPI event handling (lid close, power button)
+
+LAPTOP TYPE OPTIONS:
+  [1] ThinkPad (P1/X1/T-series) - Full thinkfan + TLP + thermald
+  [2] Generic Laptop            - TLP + thermald (no vendor fan control)
+  [3] Desktop / Skip            - Skip laptop configuration
+
+===============================================================================
+EOF
+    local laptop_choice
+    read -p "  Select laptop type (1/2/3) [3]: " laptop_choice
+    laptop_choice="${laptop_choice:-3}"
+
+    case "$laptop_choice" in
+        1)
+            log_info "Configuring for ThinkPad laptop..."
+            configure_thinkpad_laptop
+            ;;
+        2)
+            log_info "Configuring for generic laptop..."
+            configure_generic_laptop
+            ;;
+        *)
+            log_info "Skipping laptop configuration."
+            save_state "LAPTOP_CONFIG_SKIPPED" "true"
+            log_success "Phase 15 skipped by user"
+            return 0
+            ;;
+    esac
+
+    log_success "Phase 15 completed"
+}
+
+configure_thinkpad_laptop() {
+    log_info "Installing ThinkPad-specific packages..."
+
+    # Install laptop packages via chroot
+    arch-chroot "$MOUNT_ROOT" /bin/bash <<'THINKPAD_EOF'
+set -e
+
+GREEN='\033[0;32m'
+NC='\033[0m'
+info() { echo -e "${GREEN}[INFO]${NC} $*"; }
+
+# Install ThinkPad-specific packages
+info "Installing ThinkPad packages..."
+pacman --noconfirm --needed -S thinkfan lm_sensors tlp tlp-rdw acpid thermald powertop 2>/dev/null || true
+
+# Enable thinkpad_acpi fan control
+mkdir -p /etc/modprobe.d
+cat > /etc/modprobe.d/thinkpad_acpi.conf << 'MODPROBE'
+# Enable fan control for ThinkPad laptops
+options thinkpad_acpi fan_control=1 experimental=1
+MODPROBE
+info " * thinkpad_acpi module configured"
+
+# Create thinkfan configuration for ThinkPad P1 Gen5 (aggressive cooling)
+cat > /etc/thinkfan.conf << 'THINKFAN_CONF'
+##############################################################################
+# ThinkPad Fan Configuration - Aggressive Cooling
+# Optimized for ThinkPad P1/X1/T-series with high-performance CPUs
+# Adjust temperature thresholds based on your specific model
+##############################################################################
+
+sensors:
+  # ThinkPad-specific sensor (works for most models)
+  - tpacpi: /proc/acpi/ibm/thermal
+    indices: [0, 1, 2, 3, 4, 5, 6, 7]
+    correction: [0, 0, 0, 0, 0, 0, 0, 0]
+
+fans:
+  - tpacpi: /proc/acpi/ibm/fan
+
+levels:
+  # Aggressive cooling profile (prevents thermal throttling)
+  # Format: [fan_level, low_temp, high_temp]
+  - [0,      0,    45]    # Fan off below 45C
+  - [1,     42,    50]    # Level 1: 42-50C
+  - [2,     47,    55]    # Level 2: 47-55C
+  - [3,     52,    60]    # Level 3: 52-60C
+  - [4,     57,    65]    # Level 4: 57-65C
+  - [5,     62,    70]    # Level 5: 62-70C
+  - [6,     67,    75]    # Level 6: 67-75C
+  - [7,     72,    80]    # Level 7: 72-80C (max regulated)
+  - ["level full-speed", 77, 32767]  # Full speed above 77C
+THINKFAN_CONF
+info " * thinkfan configuration created"
+
+# Enable services
+systemctl enable thinkfan.service 2>/dev/null || true
+systemctl enable thermald.service 2>/dev/null || true
+systemctl enable tlp.service 2>/dev/null || true
+systemctl enable acpid.service 2>/dev/null || true
+
+# Mask conflicting services for TLP
+systemctl mask systemd-rfkill.service 2>/dev/null || true
+systemctl mask systemd-rfkill.socket 2>/dev/null || true
+
+info " * ThinkPad services enabled (thinkfan, thermald, tlp, acpid)"
+info ""
+info "ThinkPad configuration complete!"
+info "  - thinkfan: Custom fan curves for thermal management"
+info "  - thermald: Intel thermal daemon"
+info "  - TLP: Battery optimization"
+info "  - acpid: ACPI event handling"
+THINKPAD_EOF
+
+    save_state "LAPTOP_CONFIG_THINKPAD" "true"
+    log_success "ThinkPad laptop configuration completed"
+}
+
+configure_generic_laptop() {
+    log_info "Installing generic laptop packages..."
+
+    # Install generic laptop packages via chroot
+    arch-chroot "$MOUNT_ROOT" /bin/bash <<'GENERIC_EOF'
+set -e
+
+GREEN='\033[0;32m'
+NC='\033[0m'
+info() { echo -e "${GREEN}[INFO]${NC} $*"; }
+
+# Install generic laptop packages
+info "Installing laptop packages..."
+pacman --noconfirm --needed -S lm_sensors tlp tlp-rdw acpid thermald powertop 2>/dev/null || true
+
+# Enable services
+systemctl enable thermald.service 2>/dev/null || true
+systemctl enable tlp.service 2>/dev/null || true
+systemctl enable acpid.service 2>/dev/null || true
+
+# Mask conflicting services for TLP
+systemctl mask systemd-rfkill.service 2>/dev/null || true
+systemctl mask systemd-rfkill.socket 2>/dev/null || true
+
+info " * Laptop services enabled (thermald, tlp, acpid)"
+info ""
+info "Generic laptop configuration complete!"
+info "  - thermald: Intel thermal daemon"
+info "  - TLP: Battery optimization"
+info "  - acpid: ACPI event handling"
+info ""
+info "TIP: Run 'sudo powertop --auto-tune' after first boot for extra savings"
+GENERIC_EOF
+
+    save_state "LAPTOP_CONFIG_GENERIC" "true"
+    log_success "Generic laptop configuration completed"
 }
 
 phase_13_final_verification() {
@@ -2879,6 +2969,7 @@ show_phase_menu() {
         12) phase_12_snapshot_automation ;;
         13) phase_13_final_verification ;;
         14) phase_14_optional_desktop_setup ;;
+        15) phase_15_laptop_configuration ;;
         *)  echo -e "${RED}Invalid phase number.${NC}" ;;
     esac
 
@@ -2962,6 +3053,7 @@ run_installation_from_phase() {
     [[ $start_phase -le 11 ]] && { phase_11_security_hardening || return 1; }
     [[ $start_phase -le 12 ]] && { phase_12_snapshot_automation || return 1; }
     [[ $start_phase -le 14 ]] && phase_14_optional_desktop_setup
+    [[ $start_phase -le 15 ]] && phase_15_laptop_configuration
     [[ $start_phase -le 13 ]] && [[ "$skip_unmount" != "true" ]] && { phase_13_final_verification || return 1; }
 
     # Completion summary
@@ -3126,6 +3218,7 @@ main() {
         log_section "ARCH LINUX SECURE RESEARCH DEPLOYMENT - PRODUCTION v2.2"
         log_info "Running ONLY phase $RUN_ONLY_PHASE (testing mode)"
         case "$RUN_ONLY_PHASE" in
+            15) phase_15_laptop_configuration ;;
             14) phase_14_optional_desktop_setup ;;
             13) phase_13_final_verification ;;
             12) phase_12_snapshot_automation ;;
