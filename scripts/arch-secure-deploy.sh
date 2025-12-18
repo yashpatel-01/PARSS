@@ -2314,13 +2314,39 @@ if [[ -f "\$dwm_config" ]]; then
 fi
 
 # ============================================================================
-# 13. Copy configs to root for consistent sudo experience
+# 13. Copy configs to root for consistent sudo experience (same vim UI)
 # ============================================================================
-info "Configuring root account..."
+info "Configuring root account for same vim/shell experience..."
 
 mkdir -p /root/.config 2>/dev/null
-[[ -d "/home/$PRIMARY_USER/.config/nvim" ]] && cp -r "/home/$PRIMARY_USER/.config/nvim" /root/.config/
-[[ -f "/home/$PRIMARY_USER/.config/x11/xresources" ]] && cp "/home/$PRIMARY_USER/.config/x11/xresources" /root/.Xresources 2>/dev/null || true
+mkdir -p /root/.local/share 2>/dev/null
+
+# Copy nvim config and plugins (ensures root vim looks identical to user vim)
+if [[ -d "/home/$PRIMARY_USER/.config/nvim" ]]; then
+    cp -r "/home/$PRIMARY_USER/.config/nvim" /root/.config/
+    info " * Root nvim config copied"
+fi
+
+# Copy nvim plugins data (plugged directory with installed plugins)
+if [[ -d "/home/$PRIMARY_USER/.local/share/nvim" ]]; then
+    cp -r "/home/$PRIMARY_USER/.local/share/nvim" /root/.local/share/
+    info " * Root nvim plugins copied"
+fi
+
+# Copy Xresources for consistent terminal colors
+if [[ -f "/home/$PRIMARY_USER/.config/x11/xresources" ]]; then
+    cp "/home/$PRIMARY_USER/.config/x11/xresources" /root/.Xresources
+    info " * Root Xresources copied"
+fi
+
+# Copy zsh config for consistent shell experience
+if [[ -d "/home/$PRIMARY_USER/.config/zsh" ]]; then
+    cp -r "/home/$PRIMARY_USER/.config/zsh" /root/.config/
+    info " * Root zsh config copied"
+fi
+
+# Copy shell profile
+[[ -f "/home/$PRIMARY_USER/.zprofile" ]] && cp "/home/$PRIMARY_USER/.zprofile" /root/
 
 # ============================================================================
 # 14. Enable dhcpcd as fallback network (if NetworkManager fails)
