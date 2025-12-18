@@ -2026,7 +2026,7 @@ gitmakeinstall() {
         cd "\$dir" || return 1
         sudo -u $PRIMARY_USER git pull --force origin master >/dev/null 2>&1 || true
     else
-        sudo -u $PRIMARY_USER git -C "$REPODIR" clone --depth 1 --single-branch \
+        sudo -u $PRIMARY_USER git clone --depth 1 --single-branch \
             --no-tags -q "\$repo" "\$dir" || {
             warn "Clone failed: \$repo"
             return 1
@@ -2139,9 +2139,10 @@ sed -i "s/-j2/-j\$(nproc)/;/^#MAKEFLAGS/s/^#//" /etc/makepkg.conf
 info "Installing AUR helper ($AURHELPER)..."
 
 if ! command -v $AURHELPER >/dev/null 2>&1; then
-    sudo -u $PRIMARY_USER mkdir -p "$REPODIR/$AURHELPER"
+    sudo -u $PRIMARY_USER mkdir -p "$REPODIR"
 
-    sudo -u $PRIMARY_USER git -C "$REPODIR" clone --depth 1 --single-branch \
+    # Clone AUR helper (don't create dest dir first - git clone does that)
+    sudo -u $PRIMARY_USER git clone --depth 1 --single-branch \
         --no-tags -q "https://aur.archlinux.org/$AURHELPER.git" "$REPODIR/$AURHELPER" || {
         cd "$REPODIR/$AURHELPER" || exit 1
         sudo -u $PRIMARY_USER git pull --force origin master
