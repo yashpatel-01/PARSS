@@ -1973,7 +1973,7 @@ EOF
 
     # Desktop setup configuration (LARBS-style variables)
     local DOTFILES_REPO="https://github.com/yashpatel-cv/archrice.git"
-    local DOTFILES_BRANCH="master"
+    local DOTFILES_BRANCH="main"
     local REPODIR="/home/$PRIMARY_USER/.local/src"
     local AURHELPER="yay"
 
@@ -2024,7 +2024,7 @@ gitmakeinstall() {
 
     if [[ -d "\$dir/.git" ]]; then
         cd "\$dir" || return 1
-        sudo -u $PRIMARY_USER git pull --force origin master >/dev/null 2>&1 || true
+        sudo -u $PRIMARY_USER git pull --force >/dev/null 2>&1 || true
     else
         sudo -u $PRIMARY_USER git clone --depth 1 --single-branch \
             --no-tags -q "\$repo" "\$dir" || {
@@ -2043,7 +2043,7 @@ gitmakeinstall() {
 putgitrepo() {
     local repo="\$1"
     local dest="\$2"
-    local branch="\${3:-master}"
+    local branch="\${3:-main}"
 
     info "Cloning dotfiles repository..."
 
@@ -2145,7 +2145,7 @@ if ! command -v $AURHELPER >/dev/null 2>&1; then
     sudo -u $PRIMARY_USER git clone --depth 1 --single-branch \
         --no-tags -q "https://aur.archlinux.org/$AURHELPER.git" "$REPODIR/$AURHELPER" || {
         cd "$REPODIR/$AURHELPER" || exit 1
-        sudo -u $PRIMARY_USER git pull --force origin master
+        sudo -u $PRIMARY_USER git pull --force
     }
 
     cd "$REPODIR/$AURHELPER" || exit 1
